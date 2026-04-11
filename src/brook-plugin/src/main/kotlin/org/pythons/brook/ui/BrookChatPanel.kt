@@ -2,6 +2,9 @@ package org.pythons.brook.ui
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
@@ -24,6 +27,8 @@ import org.pythons.brook.runner.BrookApiClient
 
 class BrookChatPanel(private val project: Project) {
     val root = JPanel(BorderLayout())
+    
+    private var hasWon = false
 
     // 1. Usar JEditorPane con HTML para un formato enriquecido
     private val chatHistory = JEditorPane().apply {
@@ -84,7 +89,7 @@ class BrookChatPanel(private val project: Project) {
         root.add(bottomContainer, BorderLayout.SOUTH)
 
         // Mensaje de bienvenida inicial
-        appendMessage("Brook", "¡Hola! ¿En qué puedo ayudarte a depurar hoy?", true)
+        appendMessage("Brook", "Hello! I'm Brook, your AI coding assistant and I will be helping you complete the exercise. Let's get started!", true)
 
         // Eventos
         sendButton.addActionListener { sendMessage() }
@@ -93,6 +98,18 @@ class BrookChatPanel(private val project: Project) {
                 if (e.keyCode == KeyEvent.VK_ENTER) sendMessage()
             }
         })
+
+        // Re-enable buttons if the user edits their code after a win
+        EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) {
+                if (hasWon) {
+                    hasWon = false
+                    SwingUtilities.invokeLater {
+                        setLoadingState(false)
+                    }
+                }
+            }
+        }, project)
     }
 
     /**
@@ -249,6 +266,7 @@ class BrookChatPanel(private val project: Project) {
                 if (result.isSuccess) {
                     val verdict = result.getOrNull()!!
                     if (verdict.solved) {
+                        hasWon = true
                         appendMessage("Brook", "🎉 Correct!\n\n${verdict.feedback}", true)
                     } else {
                         appendMessage("Brook", "❌ Not quite right.\n\n${verdict.feedback}", true)
@@ -262,11 +280,14 @@ class BrookChatPanel(private val project: Project) {
     }
 
     private fun setLoadingState(isLoading: Boolean) {
-        inputField.isEnabled = !isLoading
-        sendButton.isEnabled = !isLoading
-        hintButton.isEnabled = !isLoading
-        verifyButton.isEnabled = !isLoading
+        val uiEnabled = !isLoading && !hasWon
+
+        inputField.isEnabled = uiEnabled
+        sendButton.isEnabled = uiEnabled
+        hintButton.isEnabled = uiEnabled
+        verifyButton.isEnabled = uiEnabled
+        
         sendButton.text = if (isLoading) "..." else "Enviar"
-        if (!isLoading) inputField.requestFocus()
+        if (uiEnabled) inputField.requestFocus()
     }
 }
