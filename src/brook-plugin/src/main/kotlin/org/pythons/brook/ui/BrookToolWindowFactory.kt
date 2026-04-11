@@ -30,10 +30,10 @@ class BrookToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentFactory = ContentFactory.getInstance()
 
-        // 1. Controls Panel
-        val panel = BrookPanel(project)
-        val content = contentFactory.createContent(panel.root, "Controls", false)
-        toolWindow.contentManager.addContent(content)
+        // 1. Menu Panel (formerly Controls)
+        val menuPanel = BrookPanel(project, toolWindow)
+        val menuContent = contentFactory.createContent(menuPanel.root, "Menu", false)
+        toolWindow.contentManager.addContent(menuContent)
 
         // 2. Chat Panel
         val chatPanel = BrookChatPanel(project)
@@ -41,11 +41,26 @@ class BrookToolWindowFactory : ToolWindowFactory {
         toolWindow.contentManager.addContent(chatContent)
     }
 
-    inner class BrookPanel(private val project: Project) {
+    private fun refreshContainer(container: JPanel) {
+        container.revalidate()
+        container.repaint()
+        var parent = container.parent
+        while (parent != null) {
+            parent.revalidate()
+            parent.repaint()
+            parent = parent.parent
+        }
+    }
+
+    inner class BrookPanel(private val project: Project, private val toolWindow: ToolWindow) {
 
         private val LOG = Logger.getInstance(BrookPanel::class.java)
-
         val root = JPanel(BorderLayout())
+        
+        private val exercisesContainer = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            alignmentX = JPanel.LEFT_ALIGNMENT
+        }
 
         // — Specialty section —
         private val specialtyValueLabel = JBLabel("—").apply {
@@ -56,13 +71,12 @@ class BrookToolWindowFactory : ToolWindowFactory {
             addActionListener { onChangeSpecialtyClicked() }
         }
 
-        // — Status & hint —
+        // — Status —
         private val statusLabel = JBLabel("Set your specialty and press Start.").apply {
             border = JBUI.Borders.empty(4, 0)
             foreground = JBUI.CurrentTheme.Label.disabledForeground()
         }
 
-    // — Action buttons —
         private val startButton = JButton("Start Brook").apply {
             addActionListener { onStartClicked() }
         }
@@ -92,21 +106,39 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 add(Box.createRigidArea(Dimension(0, 10)))
 
                 // Status
-                statusLabel.alignmentX = JPanel.LEFT_ALIGNMENT
+                statusLabel.alignmentX = JPanel.CENTER_ALIGNMENT
                 add(statusLabel)
                 add(Box.createRigidArea(Dimension(0, 10)))
 
-                // Buttons
-                startButton.alignmentX = JButton.LEFT_ALIGNMENT
-                add(startButton)
+                // Start Button (Centered and Big)
+                val buttonContainer = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
+                    alignmentX = JPanel.CENTER_ALIGNMENT
+                    isOpaque = false
+                    add(startButton.apply {
+                        font = font.deriveFont(Font.BOLD, font.size + 4f)
+                        preferredSize = Dimension(180, 45)
+                    })
+                }
+                add(buttonContainer)
                 add(Box.createRigidArea(Dimension(0, 12)))
+                
+                // Dynamic Exercises List
+                add(JSeparator())
+                add(Box.createRigidArea(Dimension(0, 10)))
+                val title = JBLabel("Available Exercises").apply {
+                    font = font.deriveFont(Font.BOLD)
+                    alignmentX = JBLabel.LEFT_ALIGNMENT
+                }
+                add(title)
+                add(Box.createRigidArea(Dimension(0, 8)))
+                add(exercisesContainer)
+                
+                // Pushes everything up
+                add(Box.createVerticalGlue())
             }
 
-            root.add(sidebar, BorderLayout.NORTH)
-            root.add(JPanel(), BorderLayout.CENTER) // Empty filler space
+            root.add(JBScrollPane(sidebar), BorderLayout.CENTER)
         }
-
-        // — Specialty —
 
         private fun refreshSpecialtyLabel() {
             val state = BrookState.getInstance(project)
@@ -123,8 +155,6 @@ class BrookToolWindowFactory : ToolWindowFactory {
             }
         }
 
-        // — Start —
-
         private fun onStartClicked() {
             val state = BrookState.getInstance(project)
 
@@ -135,35 +165,89 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 refreshSpecialtyLabel()
             }
 
-            // Check backend health first
             setStatus("Connecting to Brook backend…")
             startButton.isEnabled = false
 
             CoroutineScope(Dispatchers.IO).launch {
                 if (!BrookApiClient.isBackendReachable()) {
                     ApplicationManager.getApplication().invokeLater {
-                        setStatus("Error: Backend not running. Start it with: PYTHONPATH=. uvicorn src.api:app --reload")
+                        setStatus("Error: Backend unreachable.")
                         startButton.isEnabled = true
                     }
                     return@launch
                 }
 
-                val result = BrookApiClient.inject(
-                    repoPath = "target_repo",
-                    specialty = state.specialty
-                )
+                val result = BrookApiClient.inject(repoPath = "target_repo", specialty = state.specialty)
 
                 ApplicationManager.getApplication().invokeLater {
                     if (result.isSuccess) {
-                        setStatus("Exercise ready. Switch to the Chat tab!")
+                        setStatus("Ready! Select an exercise below.")
+                        loadExercisesInMenu()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "Unknown error"
-                        LOG.warn("Brook inject failed: $msg")
                         setStatus("Error: $msg")
                         startButton.isEnabled = true
                     }
                 }
             }
+        }
+
+        private fun loadExercisesInMenu() {
+            exercisesContainer.removeAll()
+            exercisesContainer.alignmentX = JPanel.CENTER_ALIGNMENT
+            exercisesContainer.add(JBLabel("Fetching list...").apply {
+                alignmentX = JBLabel.CENTER_ALIGNMENT
+            })
+            refreshContainer(exercisesContainer)
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = BrookApiClient.getExercises()
+                ApplicationManager.getApplication().invokeLater {
+                    exercisesContainer.removeAll()
+                    if (result.isSuccess) {
+                        val exercises = result.getOrNull() ?: emptyList()
+                        if (exercises.isEmpty()) {
+                            exercisesContainer.add(JBLabel("No exercises found.").apply {
+                                alignmentX = JBLabel.CENTER_ALIGNMENT
+                            })
+                        } else {
+                            exercises.forEach { (id, label) ->
+                                val btn = JButton(label).apply {
+                                    alignmentX = JButton.CENTER_ALIGNMENT
+                                    maximumSize = Dimension(180, preferredSize.height)
+                                    addActionListener { openExerciseTab(id, label) }
+                                }
+                                exercisesContainer.add(btn)
+                                exercisesContainer.add(Box.createRigidArea(Dimension(0, 4)))
+                            }
+                        }
+                    } else {
+                        exercisesContainer.add(JBLabel("Failed to load exercises.").apply {
+                            alignmentX = JBLabel.CENTER_ALIGNMENT
+                        })
+                    }
+                    refreshContainer(exercisesContainer)
+                }
+            }
+        }
+
+        private fun openExerciseTab(exerciseId: String, title: String) {
+            val contentManager = toolWindow.contentManager
+            
+            // Check if tab already exists
+            val existing = contentManager.contents.find { it.displayName == title }
+            if (existing != null) {
+                contentManager.setSelectedContent(existing)
+                return
+            }
+
+            // Create new panel
+            val panel = MarkdownViewerPanel(exerciseId, "EXERCISE.html")
+            val content = ContentFactory.getInstance().createContent(panel.root, title, false)
+            content.isCloseable = true
+            
+            contentManager.addContent(content)
+            contentManager.setSelectedContent(content)
         }
 
         private fun setStatus(text: String) {

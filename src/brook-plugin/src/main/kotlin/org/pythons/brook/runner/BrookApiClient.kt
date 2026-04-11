@@ -53,6 +53,12 @@ object BrookApiClient {
     @Serializable
     data class FileModification(val file: String, val content: String)
 
+    @Serializable
+    data class ExerciseDto(val id: String, val name: String)
+
+    @Serializable
+    data class ExercisesResponse(val exercises: List<ExerciseDto>)
+
     // ── API Methods ──
 
     /**
@@ -220,6 +226,53 @@ object BrookApiClient {
             response.statusCode() == 200
         } catch (e: Exception) {
             false
+        }
+    }
+
+    /**
+     * Gets the list of available exercises.
+     */
+    fun getExercises(): Result<List<Pair<String, String>>> {
+        return try {
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$BASE_URL/exercises"))
+                .GET()
+                .timeout(Duration.ofSeconds(10))
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() != 200) {
+                return Result.failure(RuntimeException("Backend returned ${response.statusCode()}"))
+            }
+
+            val parsed = json.decodeFromString(ExercisesResponse.serializer(), response.body())
+            Result.success(parsed.exercises.map { Pair(it.id, it.name) })
+        } catch (e: Exception) {
+            LOG.error("Failed to fetch exercises", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets the raw content of a specific exercise file.
+     */
+    fun getExerciseContent(exerciseId: String, fileName: String): Result<String> {
+        return try {
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$BASE_URL/exercises/$exerciseId/$fileName"))
+                .GET()
+                .timeout(Duration.ofSeconds(10))
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() != 200) {
+                return Result.failure(RuntimeException("Backend returned ${response.statusCode()}: ${response.body()}"))
+            }
+
+            Result.success(response.body())
+        } catch (e: Exception) {
+            LOG.error("Failed to fetch exercise content", e)
+            Result.failure(e)
         }
     }
 }
