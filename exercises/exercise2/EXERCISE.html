@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio de Depuración - Conduit Backend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #1e293b;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        h2 {
+            color: #1e293b;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        h3 {
+            color: #334155;
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            color: #475569;
+        }
+        
+        .bug-report {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .bug-report p {
+            color: #7f1d1d;
+            margin-bottom: 15px;
+        }
+        
+        .bug-report p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .bug-report strong {
+            color: #991b1b;
+        }
+        
+        .request-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .request-block h3 {
+            margin-top: 0;
+            color: #0f172a;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        code {
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #dc2626;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        
+        .status.correct {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status.wrong {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .file-guide {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .file-guide p {
+            color: #78350f;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .file-guide ol {
+            margin-left: 20px;
+            margin-top: 15px;
+        }
+        
+        .file-guide li {
+            margin-bottom: 15px;
+            color: #78350f;
+        }
+        
+        .file-guide strong {
+            color: #92400e;
+        }
+        
+        .hint {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .hint p {
+            color: #1e40af;
+            margin: 0;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 30px 0;
+        }
+        
+        .pattern-note {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .pattern-note p {
+            color: #075985;
+            margin: 0;
+        }
+        
+        .pattern-note code {
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Ejercicio de Depuración — Incorporación Conduit Backend</h1>
+        </div>
+
+        <h2>📋 Descripción del Problema</h2>
+        
+        <div class="bug-report">
+            <p><strong>Reporte de error — enviado por un ingeniero frontend del equipo web:</strong></p>
+            
+            <p>
+                "Estoy construyendo la vista de lista de artículos paginada y algo está mal con el conteo de artículos
+                que devuelve la API. Cuando cargo la primera página (<code>offset=0</code>) todo se ve bien — si hay
+                23 artículos que coinciden con un filtro de autor dado, la respuesta dice
+                <code>articlesCount: 20</code> (primera página, 20 elementos) y eso tiene sentido. Pero en el momento
+                en que obtengo la segunda página (<code>offset=20</code>) para obtener los 3 artículos restantes, la
+                respuesta dice <code>articlesCount: 23</code> aunque el array <code>articles</code> solo contiene 3
+                elementos. Mi lógica de paginación interpreta eso como 'todavía hay más páginas para obtener' y envía
+                una tercera solicitud — que regresa completamente vacía, con <code>articles: []</code> y
+                <code>articlesCount: 20</code>."
+            </p>
+
+            <p>
+                "Pensé que era un error de frontend al principio, pero lo reproduje con curl contra la API de staging.
+                Solo sucede cuando pagino más allá de la primera página. Una llamada simple, sin paginar
+                (<code>offset=0</code>, predeterminado) siempre da un conteo consistente. Las búsquedas de artículos
+                individuales, el endpoint de feed, crear o actualizar artículos — ninguno de esos está afectado."
+            </p>
+
+            <p>
+                "Para hacer las cosas más extrañas: cuanto mayor es el offset que uso, mayor se vuelve el conteo falso,
+                incluso cuando la lista de artículos en sí es corta. Se siente como si el conteo estuviera de alguna
+                manera 'acumulando' el valor del offset en lugar de simplemente reflejar cuántos artículos regresaron."
+            </p>
+        </div>
+
+        <hr>
+
+        <h2>🔴 Salida Defectuosa Observada</h2>
+
+        <h3>Secuencia de solicitudes que reproduce el problema</h3>
+
+        <div class="request-block">
+            <h3>Paso 1 — Primera página (se ve correcto)</h3>
+            <pre>GET /api/articles?author=johndoe&limit=20&offset=0
+Authorization: Token &lt;valid_token&gt;</pre>
+            <pre><code>{
+  "articles": [
+    { "slug": "article-1", "title": "Article 1", "author": { "username": "johndoe" }, "...": "..." },
+    { "slug": "article-2", "title": "Article 2", "author": { "username": "johndoe" }, "...": "..." },
+    "... 18 elementos más ..."
+  ],
+  "articlesCount": 20
+}</code></pre>
+            <span class="status correct">✅ Correcto</span>
+            <p><code>articlesCount</code> (20) coincide con <code>articles.length</code> (20). Se ve bien.</p>
+        </div>
+
+        <div class="request-block">
+            <h3>Paso 2 — Segunda página (aparece el error)</h3>
+            <pre>GET /api/articles?author=johndoe&limit=20&offset=20
+Authorization: Token &lt;valid_token&gt;</pre>
+            <pre><code>{
+  "articles": [
+    { "slug": "article-21", "title": "Article 21", "author": { "username": "johndoe" }, "...": "..." },
+    { "slug": "article-22", "title": "Article 22", "author": { "username": "johndoe" }, "...": "..." },
+    { "slug": "article-23", "title": "Article 23", "author": { "username": "johndoe" }, "...": "..." }
+  ],
+  "articlesCount": 23
+}</code></pre>
+            <span class="status wrong">❌ Incorrecto</span>
+            <p><code>articlesCount</code> es <strong>23</strong>, pero <code>articles.length</code> es solo <strong>3</strong>.
+               Un cliente que confía en <code>articlesCount</code> creerá que existe una tercera página.</p>
+        </div>
+
+        <div class="request-block">
+            <h3>Paso 3 — Tercera página fantasma (agrava el daño)</h3>
+            <pre>GET /api/articles?author=johndoe&limit=20&offset=40
+Authorization: Token &lt;valid_token&gt;</pre>
+            <pre><code>{
+  "articles": [],
+  "articlesCount": 40
+}</code></pre>
+            <span class="status wrong">❌ Incorrecto</span>
+            <p><code>articles</code> está vacío, pero <code>articlesCount</code> es <strong>40</strong> — sigue
+               creciendo con el valor del offset. Un cliente de scroll infinito entraría en un bucle infinito.</p>
+        </div>
+
+        <h3>Relación entre offset y el conteo inflado</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Solicitud</th>
+                    <th><code>offset</code> enviado</th>
+                    <th><code>articles</code> devueltos</th>
+                    <th><code>articlesCount</code> devuelto</th>
+                    <th><code>articlesCount</code> esperado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Página 1</td>
+                    <td>0</td>
+                    <td>20</td>
+                    <td>20</td>
+                    <td>20 ✅</td>
+                </tr>
+                <tr>
+                    <td>Página 2</td>
+                    <td>20</td>
+                    <td>3</td>
+                    <td>23</td>
+                    <td>3 ❌</td>
+                </tr>
+                <tr>
+                    <td>Página 3 (fantasma)</td>
+                    <td>40</td>
+                    <td>0</td>
+                    <td>40</td>
+                    <td>0 ❌</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="pattern-note">
+            <p>Observa el patrón: <code>articlesCount</code> = <code>articles.length</code> + <code>offset</code>.<br>
+            El valor del offset se está filtrando en el campo count.</p>
+        </div>
+
+        <hr>
+
+        <h2>🗺️ Guía de Archivos</h2>
+        <div class="file-guide">
+            <p>Trabaja con estos archivos <strong>en orden</strong>:</p>
+            <ol>
+                <li>
+                    <strong><code>app/models/schemas/articles.py</code></strong> — Comienza aquí para entender cómo
+                    se ve <code>ListOfArticlesInResponse</code> y qué contrato se supone que debe cumplir
+                    <code>articles_count</code> según el esquema.
+                </li>
+                <li>
+                    <strong><code>app/api/routes/articles/articles_resource.py</code></strong> — Encuentra el
+                    manejador de ruta que construye y devuelve un <code>ListOfArticlesInResponse</code>; presta
+                    mucha atención a exactamente cómo se puebla cada campo de ese objeto de respuesta.
+                </li>
+                <li>
+                    <strong><code>app/api/dependencies/articles.py</code></strong> — Inspecciona cómo se construye
+                    <code>ArticlesFilters</code> a partir de los parámetros de consulta entrantes; esto te dirá
+                    qué valores están disponibles para el manejador de ruta en el momento de la construcción de la
+                    respuesta.
+                </li>
+                <li>
+                    <strong><code>app/db/repositories/articles.py</code></strong> — Verifica qué devuelve realmente
+                    <code>filter_articles</code> y si el repositorio en sí es consciente del estado de paginación,
+                    para confirmar si el problema está en la capa de persistencia o por encima de ella.
+                </li>
+            </ol>
+        </div>
+
+        <hr>
+
+        <h2>💡 Pista</h2>
+        <div class="hint">
+            <p>
+                Si <code>articlesCount</code> debe reflejar el número de artículos en la respuesta actual, ¿por qué
+                un valor que describe la <em>solicitud</em> (en lugar del <em>resultado</em>) necesitaría aparecer
+                en la expresión que lo calcula?
+            </p>
+        </div>
+    </div>
+</body>
+</html>

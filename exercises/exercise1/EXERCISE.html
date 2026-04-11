@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXERCISE.md - Ejercicio de Depuración</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #1e293b;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        h2 {
+            color: #1e293b;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        h3 {
+            color: #334155;
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            color: #475569;
+        }
+        
+        .request-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .request-block h3 {
+            margin-top: 0;
+            color: #0f172a;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        code {
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #dc2626;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        
+        .status.correct {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status.wrong {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .file-guide {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .file-guide ol {
+            margin-left: 20px;
+            margin-top: 15px;
+        }
+        
+        .file-guide li {
+            margin-bottom: 15px;
+            color: #78350f;
+        }
+        
+        .file-guide strong {
+            color: #92400e;
+        }
+        
+        .hint {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .hint p {
+            color: #1e40af;
+            margin: 0;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>EXERCISE.md</h1>
+            <p class="subtitle">Incorporación de desarrolladores — ejercicio de depuración</p>
+        </div>
+
+        <h2>📋 Descripción del Problema</h2>
+        <p>
+            Hola, creo que hay un error en el endpoint de lista de elementos. Cuando cargo la primera página de
+            elementos (<code>skip=0</code>) los controles de paginación en la UI se ven completamente bien — el conteo
+            total coincide con lo que veo en la base de datos. Pero en el momento en que avanzo a la siguiente página
+            (<code>skip=10</code>, <code>skip=20</code>, etc.) el conteo total que devuelve la API comienza a disminuir.
+            Para cuando estoy en la tercera o cuarta página, el frontend piensa que hay muchos menos elementos de los
+            que realmente hay y deja de renderizar el botón "siguiente página" por completo.
+        </p>
+        <p>
+            Lo extraño es que el array <code>data</code> en sí siempre es correcto — los elementos correctos regresan
+            en el orden correcto. Es solo el campo <code>count</code> en el sobre de respuesta el que está mal. Las
+            búsquedas de un solo elemento (<code>GET /items/{id}</code>), creaciones, actualizaciones y eliminaciones
+            se comportan normalmente, por lo que parece estar aislado a la lógica de paginación del endpoint de lista.
+        </p>
+        <p>
+            Una cosa más que vale la pena señalar: la discrepancia no es aleatoria ni de uno en uno — escala de manera
+            predecible con el valor <code>skip</code> que envío. Cuanto más lejos en la lista pagino, más incorrecto
+            se vuelve el número, lo que me hace pensar que algún parámetro de solicitud se está filtrando en un cálculo
+            en el que no debería estar involucrado.
+        </p>
+
+        <hr>
+
+        <h2>🔴 Salida Defectuosa Observada</h2>
+        <p>Asume que el usuario autenticado posee <strong>42 elementos</strong> en total.</p>
+
+        <div class="request-block">
+            <h3>Solicitud 1 — primera página (offset predeterminado)</h3>
+            <pre>GET /api/v1/items/?skip=0&limit=10
+Authorization: Bearer &lt;token&gt;</pre>
+            <pre><code>{
+  "data": [ /* 10 elementos */ ],
+  "count": 42
+}</code></pre>
+            <span class="status correct">✅ Correcto</span>
+            <p><code>count</code> refleja con precisión el número total de elementos propiedad del usuario.</p>
+        </div>
+
+        <div class="request-block">
+            <h3>Solicitud 2 — segunda página</h3>
+            <pre>GET /api/v1/items/?skip=10&limit=10
+Authorization: Bearer &lt;token&gt;</pre>
+            <pre><code>{
+  "data": [ /* 10 elementos */ ],
+  "count": 20
+}</code></pre>
+            <span class="status wrong">❌ Incorrecto</span>
+            <p><code>count</code> debería seguir siendo 42 (el total no ha cambiado), pero devuelve 20.</p>
+        </div>
+
+        <div class="request-block">
+            <h3>Solicitud 3 — cuarta página</h3>
+            <pre>GET /api/v1/items/?skip=30&limit=10
+Authorization: Bearer &lt;token&gt;</pre>
+            <pre><code>{
+  "data": [ /* 10 elementos */ ],
+  "count": 40
+}</code></pre>
+            <span class="status wrong">❌ Incorrecto</span>
+            <p><code>count</code> debería ser 42 pero devuelve 40. El frontend ahora calcula solo 4 páginas totales
+               y oculta el botón "siguiente", aunque existen 2 elementos más.</p>
+        </div>
+
+        <div class="request-block">
+            <h3>Solicitud 4 — última página parcial</h3>
+            <pre>GET /api/v1/items/?skip=40&limit=10
+Authorization: Bearer &lt;token&gt;</pre>
+            <pre><code>{
+  "data": [ /* 2 elementos */ ],
+  "count": 42
+}</code></pre>
+            <span class="status correct">✅ Coincidentemente correcto en la última página</span>
+            <p><code>skip + len(data) = 40 + 2 = 42</code> resulta ser igual al total real, enmascarando el error
+               en el límite.</p>
+        </div>
+
+        <h3>Resumen del Patrón</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th><code>skip</code> enviado</th>
+                    <th>Elementos devueltos</th>
+                    <th><code>count</code> devuelto</th>
+                    <th><code>count</code> esperado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>0</td>
+                    <td>10</td>
+                    <td>42</td>
+                    <td>42 ✅</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td>10</td>
+                    <td>20</td>
+                    <td>42 ❌</td>
+                </tr>
+                <tr>
+                    <td>20</td>
+                    <td>10</td>
+                    <td>30</td>
+                    <td>42 ❌</td>
+                </tr>
+                <tr>
+                    <td>30</td>
+                    <td>10</td>
+                    <td>40</td>
+                    <td>42 ❌</td>
+                </tr>
+                <tr>
+                    <td>40</td>
+                    <td>2</td>
+                    <td>42</td>
+                    <td>42 ✅ (coincidencia)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2>🗺️ Guía de Archivos</h2>
+        <div class="file-guide">
+            <ol>
+                <li>
+                    <strong><code>backend/app/models.py</code></strong> — Observa el esquema <code>ItemsPublic</code>
+                    para entender exactamente qué se supone que representa <code>count</code> y qué tipo espera.
+                </li>
+                <li>
+                    <strong><code>backend/app/api/routes/items.py</code></strong> — Aquí es donde vive el endpoint de
+                    lista; rastrea cómo se produce el valor que termina en el campo <code>count</code> de la respuesta,
+                    y de dónde proviene.
+                </li>
+                <li>
+                    <strong><code>backend/app/crud.py</code></strong> — Busca cualquier ayudante de listado de elementos
+                    para confirmar si el error está en la capa de consulta o en la capa de ruta superior.
+                </li>
+                <li>
+                    <strong><code>backend/tests/api/routes/test_items.py</code></strong> — Verifica qué escenarios de
+                    paginación cubren las pruebas existentes; puedes encontrar una brecha que permitió que este defecto
+                    pasara desapercibido.
+                </li>
+            </ol>
+        </div>
+
+        <hr>
+
+        <h2>💡 Pista</h2>
+        <div class="hint">
+            <p>
+                El campo <code>count</code> está destinado a describir una propiedad del <strong>conjunto de datos en
+                la base de datos</strong> — entonces, ¿por qué un valor que describe la <strong>posición del llamador
+                dentro de ese conjunto de datos</strong> sería parte del cálculo?
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -14,8 +14,9 @@ from src.services.onboarding import OnboardingService
 from src.domain.models import Speciality
 
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi import Request
+import os
 
 load_dotenv()
 
@@ -133,3 +134,42 @@ def verify(req: VerifyRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/exercises")
+def list_exercises():
+    """List available exercises in the 'exercises' directory."""
+    exercises_dir = "exercises"
+    if not os.path.isdir(exercises_dir):
+        return {"exercises": []}
+    
+    result = []
+    for item in sorted(os.listdir(exercises_dir)):
+        item_path = os.path.join(exercises_dir, item)
+        if os.path.isdir(item_path):
+            # Format label similar to how the Kotlin UI did
+            name = item.replace("-", " ").replace("_", " ").title()
+            import re
+            name = re.sub(r'(\d+)', r' \1', name).strip()
+            result.append({"id": item, "name": name})
+    return {"exercises": result}
+
+
+@app.get("/exercises/{exercise_id}/{file_name}")
+def get_exercise_file(exercise_id: str, file_name: str):
+    """Return the raw file content of an exercise."""
+    # Prevent directory traversal
+    if ".." in exercise_id or ".." in file_name or "/" in file_name:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    file_path = os.path.join("exercises", exercise_id, file_name)
+    if not os.path.isfile(file_path):
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(f"<p>Could not find {file_name}</p>", status_code=404)
+        
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content)

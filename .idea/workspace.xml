@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d63e5d2d-2d20-43d6-9a99-23ffec9016f6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/agents/prompts/hint.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/agents/prompts/hint.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/BrookChatPanel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/BrookChatPanel.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target_repo" beforeDir="false" afterPath="$PROJECT_DIR$/target_repo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/api.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target_repo/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/target_repo/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
