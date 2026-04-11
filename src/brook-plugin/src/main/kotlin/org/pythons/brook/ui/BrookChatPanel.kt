@@ -148,7 +148,7 @@ class BrookChatPanel(private val project: Project) {
                             <tr>
                                 <td>
                                     <font face="Verdana, sans-serif" size="2" color="$labelColorHex">
-                                        <b>${if (isBot) "BROOK BOT" else "TÚ"}</b>
+                                        <b>${if (isBot) "BROOK Agent" else "Me"}</b>
                                     </font><br>
                                     <font face="Verdana, sans-serif" size="3" color="$textColorHex">
                                         ${safeText}
@@ -193,7 +193,7 @@ class BrookChatPanel(private val project: Project) {
         val text = inputField.text.trim()
         if (text.isEmpty()) return
 
-        appendMessage("Tú", text, false)
+        appendMessage("Me", text, false)
         inputField.text = ""
         setLoadingState(true)
 
@@ -228,7 +228,7 @@ class BrookChatPanel(private val project: Project) {
                     appendMessage("Brook", resp, true)
                 } else {
                     activeStreamText.clear()
-                    appendMessage("Brook", "Hubo un error de conexión con el bot backend.", true)
+                    appendMessage("Brook", "There was an error connecting to the backend bot.", true)
                 }
                 setLoadingState(false)
             }
@@ -237,7 +237,7 @@ class BrookChatPanel(private val project: Project) {
 
     private fun onHintClicked() {
         val state = BrookState.getInstance(project)
-        appendMessage("Tú", "Requested a hint.", false)
+        appendMessage("Me", "Requested a hint.", false)
         setLoadingState(true)
 
         activeStreamText.clear()
@@ -263,7 +263,7 @@ class BrookChatPanel(private val project: Project) {
                     appendMessage("Brook", resp, true)
                 } else {
                     activeStreamText.clear()
-                    appendMessage("Brook", "Hubo un error de conexión con el bot backend.", true)
+                    appendMessage("Brook", "There was an error connecting to the backend bot.", true)
                 }
                 setLoadingState(false)
             }
@@ -272,7 +272,7 @@ class BrookChatPanel(private val project: Project) {
 
     private fun onVerifyClicked() {
         val state = BrookState.getInstance(project)
-        appendMessage("Tú", "Checking solution...", false)
+        appendMessage("Me", "Checking solution...", false)
         setLoadingState(true)
         
         val activeFileText = FileEditorManager.getInstance(project).selectedTextEditor?.document?.text ?: ""
@@ -295,7 +295,7 @@ class BrookChatPanel(private val project: Project) {
                         appendMessage("Brook", "❌ Not quite right.\n\n${verdict.feedback}", true)
                     }
                 } else {
-                    appendMessage("Brook", "Hubo un error de conexión con el bot backend.", true)
+                    appendMessage("Brook", "There was an error connecting to the backend bot.", true)
                 }
                 setLoadingState(false)
             }
