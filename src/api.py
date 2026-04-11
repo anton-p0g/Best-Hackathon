@@ -58,12 +58,14 @@ class ChatRequest(BaseModel):
     speciality: str = "Auth"
     exercise_id: str = ""
     message: str
+    active_file: str = ""
 
 
 class VerifyRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
     exercise_id: str = ""
+    active_file: str = ""
 
 
 class GenerateExerciseRequest(BaseModel):
@@ -71,7 +73,7 @@ class GenerateExerciseRequest(BaseModel):
     speciality: str = "Auth"
 
 
-# ── Service factory (one per repo_path) ──────────────────────────────
+# Service factory - one per repo_path
 _services: dict[str, OnboardingService] = {}
 
 
@@ -81,7 +83,6 @@ def _get_service(repo_path: str = "target_repo") -> OnboardingService:
     return _services[repo_path]
 
 
-# ── Routes ───────────────────────────────────────────────────────────
 @app.post("/inject")
 def inject(req: InjectRequest):
     """Initialise the broken repo and return the directory tree."""
@@ -103,7 +104,7 @@ def hint(req: HintRequest):
 
     def event_stream():
         stream = service.process_message(
-            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=True
+            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=True, active_file=req.active_file
         )
         for chunk in stream:
             # SSE format: each event is "data: <payload>\n\n"
@@ -121,7 +122,7 @@ def chat(req: ChatRequest):
 
     def event_stream():
         stream = service.process_message(
-            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=False
+            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=False, active_file=req.active_file
         )
         for chunk in stream:
             yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -135,7 +136,7 @@ def verify(req: VerifyRequest):
     """Grade the student's current code and return a JSON verdict."""
     service = _get_service(req.repo_path)
     speciality = Speciality(speciality=req.speciality)
-    result = service.verify_solution(speciality=speciality, exercise_id=req.exercise_id)
+    result = service.verify_solution(speciality=speciality, exercise_id=req.exercise_id, active_file=req.active_file)
     return result
 
 

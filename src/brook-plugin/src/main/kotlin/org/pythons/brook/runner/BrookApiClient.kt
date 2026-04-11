@@ -38,10 +38,10 @@ object BrookApiClient {
     data class HintRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val message: String = "", val active_file: String = "")
 
     @Serializable
-    data class ChatRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val message: String)
+    data class ChatRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val message: String, val active_file: String = "")
 
     @Serializable
-    data class VerifyRequest(val repo_path: String, val speciality: String, val exercise_id: String = "")
+    data class VerifyRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val active_file: String = "")
 
     @Serializable
     data class VerifyResponse(val solved: Boolean, val feedback: String)
@@ -134,12 +134,13 @@ object BrookApiClient {
         specialty: String,
         exerciseId: String = "",
         message: String,
+        activeFile: String = "",
         onChunk: (String) -> Unit
     ): Result<String> {
         return try {
             val body = json.encodeToString(
                 ChatRequest.serializer(),
-                ChatRequest(repoPath, specialty, exerciseId, message)
+                ChatRequest(repoPath, specialty, exerciseId, message, activeFile)
             )
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/chat"))
@@ -195,9 +196,9 @@ object BrookApiClient {
     /**
      * Calls POST /verify to grade the student's solution.
      */
-    fun verify(repoPath: String, specialty: String, exerciseId: String = ""): Result<VerifyResponse> {
+    fun verify(repoPath: String, specialty: String, exerciseId: String = "", activeFile: String = ""): Result<VerifyResponse> {
         return try {
-            val body = json.encodeToString(VerifyRequest.serializer(), VerifyRequest(repoPath, specialty, exerciseId))
+            val body = json.encodeToString(VerifyRequest.serializer(), VerifyRequest(repoPath, specialty, exerciseId, activeFile))
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/verify"))
                 .header("Content-Type", "application/json")

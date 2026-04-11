@@ -7,6 +7,7 @@ import json
 import os
 import re
 import time
+import subprocess
 
 from edu.agent import graph
 from edu.tools import write_full_file
@@ -62,17 +63,29 @@ def run(directory_tree: str, speciality: str = "General") -> dict:
     print(output)
 
     data = extract_json(output)
+    
+    slug = f"exercise_{speciality.lower().replace(' ', '_')}_{int(time.time())}"
+    
+    repo_dir = "target_repo"
+    if not os.path.exists(os.path.join(repo_dir, ".git")):
+        subprocess.run(["git", "init"], cwd=repo_dir, check=False)
+        
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=False)
+    subprocess.run(["git", "commit", "-m", "Base codebase state before exercise"], cwd=repo_dir, check=False)
+    
+    subprocess.run(["git", "checkout", "-b", slug], cwd=repo_dir, check=False)
 
-    # Apply the bug patch to the target repo
     patch = data["bug_patch"]
     patch_result = write_full_file.invoke({
         "file_path": patch["file_path"],
         "content": patch["full_content"]
     })
     print("Patch result:", patch_result)
+    
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=False)
+    subprocess.run(["git", "commit", "-m", f"BREAK: Injected {speciality} exercise bug"], cwd=repo_dir, check=False)
 
     # Create a unique exercise directory under exercises/
-    slug = f"exercise_{speciality.lower().replace(' ', '_')}_{int(time.time())}"
     exercise_dir = os.path.join("exercises", slug)
     os.makedirs(exercise_dir, exist_ok=True)
 

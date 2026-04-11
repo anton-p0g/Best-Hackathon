@@ -2,6 +2,7 @@ package org.pythons.brook.ui
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -200,13 +201,16 @@ class BrookChatPanel(private val project: Project) {
         activeStreamText.clear()
         updateHtmlView()
 
+        val activeFileText = FileEditorManager.getInstance(project).selectedTextEditor?.document?.text ?: ""
+
         CoroutineScope(Dispatchers.IO).launch {
             val state = BrookState.getInstance(project)
             val result = BrookApiClient.chatStream(
                 repoPath = "target_repo",
                 specialty = state.specialty,
                 exerciseId = state.activeExerciseId,
-                message = text
+                message = text,
+                activeFile = activeFileText
             ) { chunk ->
                 // Consume Chunk real time!
                 activeStreamText.append(chunk)
@@ -239,12 +243,14 @@ class BrookChatPanel(private val project: Project) {
         activeStreamText.clear()
         updateHtmlView()
 
+        val activeFileText = FileEditorManager.getInstance(project).selectedTextEditor?.document?.text ?: ""
+
         CoroutineScope(Dispatchers.IO).launch {
             val result = BrookApiClient.hintStream(
                 repoPath = "target_repo",
                 specialty = state.specialty,
                 exerciseId = state.activeExerciseId,
-                activeFile = ""
+                activeFile = activeFileText
             ) { chunk ->
                 activeStreamText.append(chunk)
                 updateHtmlView()
@@ -268,12 +274,15 @@ class BrookChatPanel(private val project: Project) {
         val state = BrookState.getInstance(project)
         appendMessage("Tú", "Checking solution...", false)
         setLoadingState(true)
+        
+        val activeFileText = FileEditorManager.getInstance(project).selectedTextEditor?.document?.text ?: ""
 
         CoroutineScope(Dispatchers.IO).launch {
             val result = BrookApiClient.verify(
                 repoPath = "target_repo",
                 specialty = state.specialty,
-                exerciseId = state.activeExerciseId
+                exerciseId = state.activeExerciseId,
+                activeFile = activeFileText
             )
 
             ApplicationManager.getApplication().invokeLater {

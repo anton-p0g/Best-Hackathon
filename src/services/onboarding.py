@@ -11,9 +11,9 @@ class OnboardingService:
         self.tracker = WorkspaceTracker(repo_path)
         self.agent = OpenAITutorAgent(model=model)
 
-    def process_message(self, student_message: str, speciality: Speciality, exercise_id: str = "", is_hint_trigger: bool = False) -> Iterator[str]:
+    def process_message(self, student_message: str, speciality: Speciality, exercise_id: str = "", is_hint_trigger: bool = False, active_file: str = "") -> Iterator[str]:
         """Collects local IDE context and streams the LLM response."""
-        workspace_state = self.tracker.get_state(speciality, exercise_id=exercise_id)
+        workspace_state = self.tracker.get_state(speciality, exercise_id=exercise_id, active_file=active_file)
         
         return self.agent.generate_hint_stream(
             student_message=student_message,
@@ -21,6 +21,6 @@ class OnboardingService:
             is_hint_trigger=is_hint_trigger
         )
 
-    def verify_solution(self, speciality: Speciality, exercise_id: str = "") -> dict:
-        workspace_state = self.tracker.get_state(speciality, exercise_id=exercise_id)
+    def verify_solution(self, speciality: Speciality, exercise_id: str = "", active_file: str = "") -> dict:
+        workspace_state = self.tracker.get_state(speciality, exercise_id=exercise_id, active_file=active_file)
         return self.agent.verify_solution(workspace_state)
