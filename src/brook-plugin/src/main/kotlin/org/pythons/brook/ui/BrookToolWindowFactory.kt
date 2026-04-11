@@ -250,26 +250,29 @@ class BrookToolWindowFactory : ToolWindowFactory {
             val contentManager = toolWindow.contentManager
             val fileName = "EXERCISE.html"
 
-            // Tell the shared panel to load the new exercise content.
-            // Because it owns the one-and-only JBCefBrowser, content is simply
-            // reloaded; no browser is ever created or destroyed mid-flight.
-            exercisePanel.loadExercise(exerciseId, fileName)
-
-            // If the exercise tab is already open, just update its title and select it.
+            // If the exercise tab is already open, update its title, select it,
+            // then reload the content (browser is already visible — safe to call loadHTML).
             val existing = exerciseContent
             if (existing != null && contentManager.contents.contains(existing)) {
                 existing.displayName = title
                 contentManager.setSelectedContent(existing)
+                exercisePanel.loadExercise(exerciseId, fileName)
                 return
             }
 
-            // First time: add the tab.
+            // First time: attach the tab to the UI BEFORE calling loadExercise().
+            // JCEF silently ignores loadHTML() calls made before the browser component
+            // is part of a visible window hierarchy — that's why the first open always
+            // appeared blank. Adding and selecting the content first puts the component
+            // on screen, then loadExercise() can successfully push HTML into it.
             val content = ContentFactory.getInstance().createContent(exercisePanel.root, title, false)
             content.isCloseable = true
             exerciseContent = content
-
             contentManager.addContent(content)
             contentManager.setSelectedContent(content)
+
+            // Now the browser is visible — load the exercise content.
+            exercisePanel.loadExercise(exerciseId, fileName)
         }
 
         private fun setStatus(text: String) {
