@@ -5,13 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d63e5d2d-2d20-43d6-9a99-23ffec9016f6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/api.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/BrookApiClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/BrookApiClient.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/FileModifier.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/FileModifier.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/ScriptRunner.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/runner/ScriptRunner.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/BrookToolWindowFactory.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/BrookToolWindowFactory.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/HintAction.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/kotlin/org/pythons/brook/ui/HintAction.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/brook-plugin/src/main/resources/brook_plugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/brook-plugin/src/main/resources/brook_plugin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,17 +34,17 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "plugin__backend",
-    "ignore.virus.scanning.warn.message": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/oliga/OneDrive/Desktop/Best-Hackathon/Best-Hackathon"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;plugin__backend&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/oliga/OneDrive/Desktop/Best-Hackathon/Best-Hackathon&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
