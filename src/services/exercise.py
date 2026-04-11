@@ -10,7 +10,7 @@ def setup_broken_repo(base_dir: str = "target_repo"):
     """
     repo_path = Path(base_dir)
     
-    if repo_path.exists():
+    if (repo_path / ".git").exists():
         print(f"Repository {base_dir} already exists. Skipping initialization.")
         return
 

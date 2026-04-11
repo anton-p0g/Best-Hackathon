@@ -15,7 +15,6 @@ def get_hint_prompt(state: WorkspaceState) -> str:
     3. TAILOR TO SPECIALTY: Frame your hints, analogies, and questions around their specialty ({state.speciality.speciality}). For example, if they are in cybersecurity, relate the logical bug to a potential vulnerability or trust boundary; if DevOps, relate it to resource limits or pipeline failures.
     4. BE CONTEXTUAL: Base your hints strictly on the provided `active_file_content` and `git_diff`. Point them toward specific lines or functions without giving away the exact error.
     5. CONCISE & ENCOURAGING: Keep responses short, readable, and highly encouraging. You are a mentor, not a compiler.
-    6. OUTPUT FORMAT: Respond STRICTLY in JSON format with a single key "hint".
 
     DATA CONTEXT:
     [Directory Tree]
