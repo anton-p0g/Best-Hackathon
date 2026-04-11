@@ -54,7 +54,7 @@ class HintAction : AnAction() {
                     val result = BrookApiClient.hintStream(
                         repoPath = "target_repo",
                         specialty = specialty,
-                        currentFile = currentFile
+                        activeFile = currentFile
                     ) { chunk ->
                         fullHint.append(chunk)
                     }

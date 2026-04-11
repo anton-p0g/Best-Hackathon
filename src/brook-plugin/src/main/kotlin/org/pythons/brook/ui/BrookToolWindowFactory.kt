@@ -17,6 +17,7 @@ import org.pythons.brook.BrookState
 import org.pythons.brook.runner.BrookApiClient
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Font
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -78,6 +79,16 @@ class BrookToolWindowFactory : ToolWindowFactory {
             addActionListener { onVerifyClicked() }
         }
 
+        // — Chat input —
+        private val chatField = com.intellij.ui.components.JBTextField().apply {
+            emptyText.text = "Ask a question…"
+        }
+
+        private val sendButton = JButton("Send").apply {
+            addActionListener { onChatSend() }
+            isEnabled = false
+        }
+
         init {
             refreshSpecialtyLabel()
             buildUI()
@@ -116,6 +127,18 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 add(hintButton)
                 add(Box.createRigidArea(Dimension(0, 6)))
                 add(verifyButton)
+                add(Box.createRigidArea(Dimension(0, 12)))
+                add(JSeparator())
+                add(Box.createRigidArea(Dimension(0, 8)))
+
+                // Chat input row
+                val chatRow = JPanel(BorderLayout(6, 0)).apply {
+                    alignmentX = JPanel.LEFT_ALIGNMENT
+                    maximumSize = Dimension(Int.MAX_VALUE, 36)
+                    add(chatField, BorderLayout.CENTER)
+                    add(sendButton, BorderLayout.EAST)
+                }
+                add(chatRow)
             }
 
             root.add(sidebar, BorderLayout.NORTH)
@@ -174,6 +197,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                         setStatus("Exercise ready. Good luck!")
                         hintButton.isEnabled = true
                         verifyButton.isEnabled = true
+                        sendButton.isEnabled = true
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                         LOG.warn("Brook inject failed: $msg")
@@ -196,7 +220,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 val result = BrookApiClient.hintStream(
                     repoPath = "target_repo",
                     specialty = state.specialty,
-                    currentFile = ""
+                    activeFile = ""
                 ) { chunk ->
                     // Stream each token into the text area in real-time
                     ApplicationManager.getApplication().invokeLater {
@@ -252,6 +276,41 @@ class BrookToolWindowFactory : ToolWindowFactory {
 
         private fun setStatus(text: String) {
             statusLabel.text = text
+        }
+
+        // — Chat —
+
+        private fun onChatSend() {
+            val state = BrookState.getInstance(project)
+            val message = chatField.text.trim()
+            if (message.isBlank()) return
+
+            chatField.text = ""
+            setStatus("Thinking…")
+            sendButton.isEnabled = false
+            hintArea.text = ""
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = BrookApiClient.chatStream(
+                    repoPath = "target_repo",
+                    specialty = state.specialty,
+                    message = message
+                ) { chunk ->
+                    ApplicationManager.getApplication().invokeLater {
+                        hintArea.append(chunk)
+                    }
+                }
+
+                ApplicationManager.getApplication().invokeLater {
+                    sendButton.isEnabled = true
+                    if (result.isSuccess) {
+                        setStatus("Response complete.")
+                    } else {
+                        val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        setStatus("Error: $msg")
+                    }
+                }
+            }
         }
     }
 }

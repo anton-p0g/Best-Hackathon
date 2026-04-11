@@ -1,5 +1,12 @@
 package org.pythons.brook.runner
 
+// ──────────────────────────────────────────────────────────────────────────────
+// DEPRECATED: ScriptRunner is no longer used.
+// The plugin now communicates with the Brook backend via HTTP using BrookApiClient.
+// This file is kept for reference only.
+// ──────────────────────────────────────────────────────────────────────────────
+
+/*
 import com.intellij.openapi.diagnostic.Logger
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -150,3 +157,4 @@ object ScriptRunner {
         return null
     }
 }
+*/

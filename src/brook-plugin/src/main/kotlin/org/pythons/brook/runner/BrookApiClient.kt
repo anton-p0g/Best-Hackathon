@@ -20,6 +20,7 @@ object BrookApiClient {
     private const val BASE_URL = "http://localhost:8000"
 
     private val client: HttpClient = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1)
         .connectTimeout(Duration.ofSeconds(5))
         .build()
 
@@ -34,7 +35,10 @@ object BrookApiClient {
     data class InjectResponse(val status: String, val directory_tree: String, val git_diff: String)
 
     @Serializable
-    data class HintRequest(val repo_path: String, val speciality: String, val message: String = "")
+    data class HintRequest(val repo_path: String, val speciality: String, val message: String = "", val active_file: String = "")
+
+    @Serializable
+    data class ChatRequest(val repo_path: String, val speciality: String, val message: String)
 
     @Serializable
     data class VerifyRequest(val repo_path: String, val speciality: String)
@@ -57,9 +61,11 @@ object BrookApiClient {
     fun inject(repoPath: String, specialty: String): Result<InjectResponse> {
         return try {
             val body = json.encodeToString(InjectRequest.serializer(), InjectRequest(repoPath, specialty))
+            LOG.info("Sending inject request with body: $body")
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/inject"))
                 .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .timeout(Duration.ofSeconds(30))
                 .build()
@@ -84,13 +90,14 @@ object BrookApiClient {
     fun hintStream(
         repoPath: String,
         specialty: String,
-        currentFile: String,
+        message: String = "",
+        activeFile: String = "",
         onChunk: (String) -> Unit
     ): Result<String> {
         return try {
             val body = json.encodeToString(
                 HintRequest.serializer(),
-                HintRequest(repoPath, specialty, currentFile)
+                HintRequest(repoPath, specialty, message, activeFile)
             )
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/hint"))
@@ -99,38 +106,77 @@ object BrookApiClient {
                 .timeout(Duration.ofSeconds(60))
                 .build()
 
-            val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
-
-            if (response.statusCode() != 200) {
-                val errorBody = response.body().bufferedReader().readText()
-                return Result.failure(RuntimeException("Backend returned ${response.statusCode()}: $errorBody"))
-            }
-
-            val fullText = StringBuilder()
-            val reader = BufferedReader(InputStreamReader(response.body()))
-
-            reader.useLines { lines ->
-                for (line in lines) {
-                    if (line.startsWith("data: ")) {
-                        val payload = line.removePrefix("data: ").trim()
-                        if (payload == "[DONE]") break
-
-                        try {
-                            val chunk = json.decodeFromString(SseChunk.serializer(), payload)
-                            fullText.append(chunk.chunk)
-                            onChunk(chunk.chunk)
-                        } catch (e: Exception) {
-                            LOG.warn("Failed to parse SSE chunk: $payload", e)
-                        }
-                    }
-                }
-            }
-
-            Result.success(fullText.toString())
+            parseSseStream(request, onChunk)
         } catch (e: Exception) {
             LOG.error("Brook API hint failed", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * Calls POST /chat and streams the SSE response for free-form student messages.
+     * Returns the full concatenated response text.
+     */
+    fun chatStream(
+        repoPath: String,
+        specialty: String,
+        message: String,
+        onChunk: (String) -> Unit
+    ): Result<String> {
+        return try {
+            val body = json.encodeToString(
+                ChatRequest.serializer(),
+                ChatRequest(repoPath, specialty, message)
+            )
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$BASE_URL/chat"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .timeout(Duration.ofSeconds(60))
+                .build()
+
+            parseSseStream(request, onChunk)
+        } catch (e: Exception) {
+            LOG.error("Brook API chat failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Shared SSE stream parser used by both hintStream and chatStream.
+     */
+    private fun parseSseStream(
+        request: HttpRequest,
+        onChunk: (String) -> Unit
+    ): Result<String> {
+        val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
+
+        if (response.statusCode() != 200) {
+            val errorBody = response.body().bufferedReader().readText()
+            return Result.failure(RuntimeException("Backend returned ${response.statusCode()}: $errorBody"))
+        }
+
+        val fullText = StringBuilder()
+        val reader = BufferedReader(InputStreamReader(response.body()))
+
+        reader.useLines { lines ->
+            for (line in lines) {
+                if (line.startsWith("data: ")) {
+                    val payload = line.removePrefix("data: ").trim()
+                    if (payload == "[DONE]") break
+
+                    try {
+                        val chunk = json.decodeFromString(SseChunk.serializer(), payload)
+                        fullText.append(chunk.chunk)
+                        onChunk(chunk.chunk)
+                    } catch (e: Exception) {
+                        LOG.warn("Failed to parse SSE chunk: $payload", e)
+                    }
+                }
+            }
+        }
+
+        return Result.success(fullText.toString())
     }
 
     /**

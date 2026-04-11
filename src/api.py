@@ -13,6 +13,10 @@ from dotenv import load_dotenv
 from src.services.onboarding import OnboardingService
 from src.domain.models import Speciality
 
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
 load_dotenv()
 
 app = FastAPI(title="Brook API", version="0.1.0")
@@ -24,6 +28,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    body = await request.body()
+    print(f"Validation Error! Raw Body: {body.decode('utf-8')}")
+    print(f"Details: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": body.decode("utf-8")},
+    )
 
 # ── Request / Response DTOs ──────────────────────────────────────────
 class InjectRequest(BaseModel):
@@ -35,6 +48,13 @@ class HintRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
     message: str = ""
+    active_file: str = ""        # optional: content of the currently open file
+
+
+class ChatRequest(BaseModel):
+    repo_path: str = "target_repo"
+    speciality: str = "Auth"
+    message: str
 
 
 class VerifyRequest(BaseModel):
@@ -78,6 +98,23 @@ def hint(req: HintRequest):
         )
         for chunk in stream:
             # SSE format: each event is "data: <payload>\n\n"
+            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    """Stream a free-form tutoring response back to the client using SSE."""
+    service = _get_service(req.repo_path)
+    speciality = Speciality(speciality=req.speciality)
+
+    def event_stream():
+        stream = service.process_message(
+            req.message, speciality=speciality, is_hint_trigger=False
+        )
+        for chunk in stream:
             yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         yield "data: [DONE]\n\n"
 

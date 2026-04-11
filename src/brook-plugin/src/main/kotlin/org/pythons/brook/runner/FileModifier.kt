@@ -21,7 +21,7 @@ object FileModifier {
      */
     fun applyModifications(
         project: Project,
-        modifications: List<ScriptRunner.FileModification>
+        modifications: List<BrookApiClient.FileModification>
     ) {
         if (modifications.isEmpty()) return
 
@@ -34,7 +34,7 @@ object FileModifier {
 
     private fun applyModification(
         project: Project,
-        mod: ScriptRunner.FileModification
+        mod: BrookApiClient.FileModification
     ) {
         val projectPath = project.basePath ?: return
         val targetFile = File(projectPath, mod.file)
