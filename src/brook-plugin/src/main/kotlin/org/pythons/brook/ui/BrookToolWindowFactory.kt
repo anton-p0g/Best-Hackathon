@@ -14,8 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.pythons.brook.BrookState
-import org.pythons.brook.runner.FileModifier
-import org.pythons.brook.runner.ScriptRunner
+import org.pythons.brook.runner.BrookApiClient
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Font
@@ -74,6 +73,11 @@ class BrookToolWindowFactory : ToolWindowFactory {
             addActionListener { onHintClicked() }
         }
 
+        private val verifyButton = JButton("Check Solution").apply {
+            isEnabled = false
+            addActionListener { onVerifyClicked() }
+        }
+
         init {
             refreshSpecialtyLabel()
             buildUI()
@@ -106,9 +110,12 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 // Buttons
                 startButton.alignmentX = JButton.LEFT_ALIGNMENT
                 hintButton.alignmentX = JButton.LEFT_ALIGNMENT
+                verifyButton.alignmentX = JButton.LEFT_ALIGNMENT
                 add(startButton)
                 add(Box.createRigidArea(Dimension(0, 6)))
                 add(hintButton)
+                add(Box.createRigidArea(Dimension(0, 6)))
+                add(verifyButton)
             }
 
             root.add(sidebar, BorderLayout.NORTH)
@@ -144,21 +151,29 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 refreshSpecialtyLabel()
             }
 
-            setStatus("Injecting issues…")
+            // Check backend health first
+            setStatus("Connecting to Brook backend…")
             startButton.isEnabled = false
 
             CoroutineScope(Dispatchers.IO).launch {
-                val result = ScriptRunner.runInjectScript(
-                    projectPath = project.basePath ?: return@launch,
+                if (!BrookApiClient.isBackendReachable()) {
+                    ApplicationManager.getApplication().invokeLater {
+                        setStatus("Error: Backend not running. Start it with: PYTHONPATH=. uvicorn src.api:app --reload")
+                        startButton.isEnabled = true
+                    }
+                    return@launch
+                }
+
+                val result = BrookApiClient.inject(
+                    repoPath = "target_repo",
                     specialty = state.specialty
                 )
 
                 ApplicationManager.getApplication().invokeLater {
                     if (result.isSuccess) {
-                        val modifications = result.getOrNull() ?: return@invokeLater
-                        FileModifier.applyModifications(project, modifications)
-                        setStatus("Issues injected. Good luck!")
+                        setStatus("Exercise ready. Good luck!")
                         hintButton.isEnabled = true
+                        verifyButton.isEnabled = true
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                         LOG.warn("Brook inject failed: $msg")
@@ -169,25 +184,64 @@ class BrookToolWindowFactory : ToolWindowFactory {
             }
         }
 
-        // — Hint —
+        // — Hint (SSE streaming) —
 
         private fun onHintClicked() {
             val state = BrookState.getInstance(project)
             setStatus("Fetching hint…")
             hintButton.isEnabled = false
+            hintArea.text = ""
 
             CoroutineScope(Dispatchers.IO).launch {
-                val result = ScriptRunner.runHintScript(
-                    projectPath = project.basePath ?: return@launch,
+                val result = BrookApiClient.hintStream(
+                    repoPath = "target_repo",
                     specialty = state.specialty,
                     currentFile = ""
-                )
+                ) { chunk ->
+                    // Stream each token into the text area in real-time
+                    ApplicationManager.getApplication().invokeLater {
+                        hintArea.append(chunk)
+                    }
+                }
 
                 ApplicationManager.getApplication().invokeLater {
                     hintButton.isEnabled = true
                     if (result.isSuccess) {
-                        hintArea.text = result.getOrNull() ?: ""
                         setStatus("Here is your hint:")
+                    } else {
+                        val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        setStatus("Error: $msg")
+                    }
+                }
+            }
+        }
+
+        // — Verify —
+
+        private fun onVerifyClicked() {
+            val state = BrookState.getInstance(project)
+            setStatus("Grading your code…")
+            verifyButton.isEnabled = false
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = BrookApiClient.verify(
+                    repoPath = "target_repo",
+                    specialty = state.specialty
+                )
+
+                ApplicationManager.getApplication().invokeLater {
+                    verifyButton.isEnabled = true
+                    if (result.isSuccess) {
+                        val verdict = result.getOrNull()!!
+                        if (verdict.solved) {
+                            setStatus("Correct!")
+                            hintArea.text = "${verdict.feedback}"
+                            hintButton.isEnabled = false
+                            verifyButton.isEnabled = false
+                        } else {
+                            setStatus("Not quite right.")
+                            hintArea.text = "${verdict.feedback}"
+                        }
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                         setStatus("Error: $msg")

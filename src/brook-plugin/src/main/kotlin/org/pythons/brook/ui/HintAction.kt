@@ -12,7 +12,7 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import org.pythons.brook.BrookState
-import org.pythons.brook.runner.ScriptRunner
+import org.pythons.brook.runner.BrookApiClient
 
 class HintAction : AnAction() {
 
@@ -21,7 +21,6 @@ class HintAction : AnAction() {
     override fun getActionUpdateThread(): ActionUpdateThread =
         ActionUpdateThread.BGT
 
-    // Disable the button if no specialty has been set yet
     override fun update(e: AnActionEvent) {
         val project = e.project
         if (project == null) {
@@ -36,7 +35,6 @@ class HintAction : AnAction() {
         val project = e.project ?: return
         val state = BrookState.getInstance(project)
 
-        // Get the currently open file path, fall back to empty string
         val currentFile = e.getData(CommonDataKeys.VIRTUAL_FILE)
             ?.path
             ?.removePrefix(project.basePath ?: "")
@@ -52,11 +50,14 @@ class HintAction : AnAction() {
                 override fun run(indicator: ProgressIndicator) {
                     indicator.isIndeterminate = true
 
-                    val result = ScriptRunner.runHintScript(
-                        projectPath = project.basePath ?: return,
+                    val fullHint = StringBuilder()
+                    val result = BrookApiClient.hintStream(
+                        repoPath = "target_repo",
                         specialty = specialty,
                         currentFile = currentFile
-                    )
+                    ) { chunk ->
+                        fullHint.append(chunk)
+                    }
 
                     ApplicationManager.getApplication().invokeLater {
                         if (result.isSuccess) {
