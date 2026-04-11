@@ -9,5 +9,6 @@ class Speciality(BaseModel):
 class WorkspaceState(BaseModel):
     git_diff: str
     active_file_content: Optional[str] = None
+    bug_sheet_content: Optional[str] = None
     directory_tree: str
     speciality: Speciality

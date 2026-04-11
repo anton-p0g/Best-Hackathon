@@ -32,13 +32,15 @@ class BrookToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentFactory = ContentFactory.getInstance()
 
-        // 1. Menu Panel (formerly Controls)
-        val menuPanel = BrookPanel(project, toolWindow)
+        // Create Chat Panel first
+        val chatPanel = BrookChatPanel(project)
+
+        // Menu Panel gets a reference to the chat panel
+        val menuPanel = BrookPanel(project, toolWindow, chatPanel)
         val menuContent = contentFactory.createContent(menuPanel.root, "Menu", false)
         toolWindow.contentManager.addContent(menuContent)
 
-        // 2. Chat Panel
-        val chatPanel = BrookChatPanel(project)
+        // Then add Chat Panel content
         val chatContent = contentFactory.createContent(chatPanel.root, "Chat", false)
         toolWindow.contentManager.addContent(chatContent)
     }
@@ -54,7 +56,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
         }
     }
 
-    inner class BrookPanel(private val project: Project, private val toolWindow: ToolWindow) {
+    inner class BrookPanel(private val project: Project, private val toolWindow: ToolWindow, private val chatPanel: BrookChatPanel) {
 
         private val LOG = Logger.getInstance(BrookPanel::class.java)
         val root = JPanel(BorderLayout())
@@ -88,6 +90,11 @@ class BrookToolWindowFactory : ToolWindowFactory {
 
         private val startButton = JButton("Start Brook").apply {
             addActionListener { onStartClicked() }
+        }
+
+        private val generateButton = JButton("Generate Exercise").apply {
+            isEnabled = false
+            addActionListener { onGenerateClicked() }
         }
 
         init {
@@ -129,6 +136,17 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     })
                 }
                 add(buttonContainer)
+                add(Box.createRigidArea(Dimension(0, 6)))
+
+                // Generate Exercise Button (Centered)
+                val generateContainer = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
+                    alignmentX = JPanel.CENTER_ALIGNMENT
+                    isOpaque = false
+                    add(generateButton.apply {
+                        preferredSize = Dimension(180, 35)
+                    })
+                }
+                add(generateContainer)
                 add(Box.createRigidArea(Dimension(0, 12)))
 
                 // Dynamic Exercises List
@@ -191,6 +209,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 ApplicationManager.getApplication().invokeLater {
                     if (result.isSuccess) {
                         setStatus("Ready! Select an exercise below.")
+                        generateButton.isEnabled = true
                         loadExercisesInMenu()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "Unknown error"
@@ -201,6 +220,30 @@ class BrookToolWindowFactory : ToolWindowFactory {
             }
         }
 
+        private fun onGenerateClicked() {
+            val state = BrookState.getInstance(project)
+            generateButton.isEnabled = false
+            setStatus("Generating exercise… this may take a minute.")
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = BrookApiClient.generateExercise(
+                    repoPath = "target_repo",
+                    specialty = state.specialty
+                )
+
+                ApplicationManager.getApplication().invokeLater {
+                    generateButton.isEnabled = true
+                    if (result.isSuccess) {
+                        val id = result.getOrNull()?.exercise_id ?: "unknown"
+                        setStatus("Exercise \"$id\" created!")
+                        loadExercisesInMenu()
+                    } else {
+                        val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        setStatus("Generation failed: $msg")
+                    }
+                }
+            }
+        }
         private fun loadExercisesInMenu() {
             exercisesContainer.removeAll()
             exercisesContainer.alignmentX = JPanel.CENTER_ALIGNMENT
@@ -247,6 +290,10 @@ class BrookToolWindowFactory : ToolWindowFactory {
         }
 
         private fun openExerciseTab(exerciseId: String, title: String) {
+            val state = BrookState.getInstance(project)
+            state.activeExerciseId = exerciseId
+            chatPanel.updateActiveExercise(title)
+            
             val contentManager = toolWindow.contentManager
             val fileName = "EXERCISE.html"
 

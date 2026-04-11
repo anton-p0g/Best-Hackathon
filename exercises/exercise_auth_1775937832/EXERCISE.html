@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debugging Exercise - Password Change Rejects Valid Credentials</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        color: #1e293b;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: #64748b;
+        font-size: 1.1em;
+        font-weight: 500;
+      }
+
+      h2 {
+        color: #1e293b;
+        font-size: 1.8em;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 4px solid #2563eb;
+      }
+
+      h3 {
+        color: #334155;
+        font-size: 1.3em;
+        margin-top: 25px;
+        margin-bottom: 15px;
+      }
+
+      p {
+        margin-bottom: 15px;
+        color: #475569;
+      }
+
+      .bug-report {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .bug-report p {
+        color: #7f1d1d;
+        margin-bottom: 15px;
+      }
+
+      .request-block {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .request-block h3 {
+        margin-top: 0;
+        color: #0f172a;
+      }
+
+      pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #dc2626;
+        font-size: 0.9em;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        color: #e2e8f0;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin: 10px 0;
+      }
+
+      .status.correct {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status.wrong {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e2e8f0;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .file-guide {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .file-guide ol {
+        margin-left: 20px;
+        margin-top: 15px;
+      }
+
+      .file-guide li {
+        margin-bottom: 15px;
+        color: #78350f;
+      }
+
+      .file-guide strong {
+        color: #92400e;
+      }
+
+      .hint {
+        background: #dbeafe;
+        border-left: 4px solid #2563eb;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .hint p {
+        color: #1e40af;
+        margin: 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 2px solid #e2e8f0;
+        margin: 30px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Password Change Rejects Valid Credentials</h1>
+        <div class="subtitle">Backend debugging exercise focused on authenticated account management</div>
+      </div>
+
+      <h2>## 📋 Statement</h2>
+      <div class="bug-report">
+        <p>QA reported that the in-session password change flow is rejecting valid requests for logged-in users. When a user enters their actual current password and a different new password, the API responds with <code>400 Incorrect password</code>. The odd part is that login itself still works, and password recovery plus reset-password also appear to work normally.</p>
+        <p>We can reproduce this only on the authenticated self-service password update endpoint. Profile reads, profile edits, and token-based authentication continue to behave as expected. The failure pattern gets stranger when you vary the request: the response seems to depend on the replacement password value more than on the password the user claims is their current one, which makes the error message look misleading.</p>
+      </div>
+
+      <h2>## 🔴 Observed defective output</h2>
+
+      <div class="request-block">
+        <h3>1) Login with the existing password</h3>
+        <pre><code>POST /api/v1/login/access-token
+Content-Type: application/x-www-form-urlencoded
+
+username=alice@example.com&amp;password=OldPass123!</code></pre>
+        <pre><code>HTTP/1.1 200 OK
+{
+  "access_token": "eyJ...",
+  "token_type": "bearer"
+}</code></pre>
+        <div class="status correct">✅ Correct</div>
+        <p>The account can authenticate successfully with the known current password.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>2) Try to change password using the correct current password and a different new password</h3>
+        <pre><code>PATCH /api/v1/users/me/password
+Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{
+  "current_password": "OldPass123!",
+  "new_password": "NewPass456!"
+}</code></pre>
+        <pre><code>HTTP/1.1 400 Bad Request
+{
+  "detail": "Incorrect password"
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The request should succeed because the current password is valid, but it is rejected.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>3) Try again with another different replacement password</h3>
+        <pre><code>PATCH /api/v1/users/me/password
+Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{
+  "current_password": "OldPass123!",
+  "new_password": "AnotherNew789!"
+}</code></pre>
+        <pre><code>HTTP/1.1 400 Bad Request
+{
+  "detail": "Incorrect password"
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>Changing only the replacement value still produces the same rejection, even though the current password remains valid.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>4) Submit the same value for current and new password</h3>
+        <pre><code>PATCH /api/v1/users/me/password
+Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{
+  "current_password": "OldPass123!",
+  "new_password": "OldPass123!"
+}</code></pre>
+        <pre><code>HTTP/1.1 400 Bad Request
+{
+  "detail": "New password cannot be the same as the current one"
+}</code></pre>
+        <div class="status correct">✅ Correct</div>
+        <p>This validation still behaves normally, which helps narrow the issue to a more specific branch of the password update logic.</p>
+      </div>
+
+      <table>
+        <tr>
+          <th>Current password sent</th>
+          <th>New password sent</th>
+          <th>API detail returned</th>
+          <th>Expected result</th>
+        </tr>
+        <tr>
+          <td>OldPass123!</td>
+          <td>NewPass456!</td>
+          <td>Incorrect password</td>
+          <td>Password updated successfully</td>
+        </tr>
+        <tr>
+          <td>OldPass123!</td>
+          <td>AnotherNew789!</td>
+          <td>Incorrect password</td>
+          <td>Password updated successfully</td>
+        </tr>
+        <tr>
+          <td>OldPass123!</td>
+          <td>OldPass123!</td>
+          <td>New password cannot be the same as the current one</td>
+          <td>New password cannot be the same as the current one</td>
+        </tr>
+      </table>
+
+      <h2>## 🗺️ File guide</h2>
+      <div class="file-guide">
+        <ol>
+          <li><strong>target_repo/backend/app/api/routes/users.py</strong> — Review how the authenticated self-service password update endpoint validates request fields before saving the new hash.</li>
+          <li><strong>target_repo/backend/app/core/security.py</strong> — Check what the password verification helper expects as input and what it compares internally.</li>
+          <li><strong>target_repo/backend/app/crud.py</strong> — Compare the password-checking approach used in login with the one used during authenticated password changes.</li>
+        </ol>
+      </div>
+
+      <h2>## 💡 Hint</h2>
+      <div class="hint">
+        <p>When a request contains both a credential that proves the user is already authenticated and a separate value that will replace it, which one should be used to verify identity before allowing the update?</p>
+      </div>
+    </div>
+  </body>
+</html>

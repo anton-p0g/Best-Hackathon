@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debugging Exercise - Inconsistent Item Pagination Metadata</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        color: #1e293b;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: #64748b;
+        font-size: 1.1em;
+        font-weight: 500;
+      }
+
+      h2 {
+        color: #1e293b;
+        font-size: 1.8em;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 4px solid #2563eb;
+      }
+
+      h3 {
+        color: #334155;
+        font-size: 1.3em;
+        margin-top: 25px;
+        margin-bottom: 15px;
+      }
+
+      p {
+        margin-bottom: 15px;
+        color: #475569;
+      }
+
+      .bug-report {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .bug-report p {
+        color: #7f1d1d;
+        margin-bottom: 15px;
+      }
+
+      .request-block {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .request-block h3 {
+        margin-top: 0;
+        color: #0f172a;
+      }
+
+      pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #dc2626;
+        font-size: 0.9em;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        color: #e2e8f0;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin: 10px 0;
+      }
+
+      .status.correct {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status.wrong {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e2e8f0;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .file-guide {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .file-guide ol {
+        margin-left: 20px;
+        margin-top: 15px;
+      }
+
+      .file-guide li {
+        margin-bottom: 15px;
+        color: #78350f;
+      }
+
+      .file-guide strong {
+        color: #92400e;
+      }
+
+      .hint {
+        background: #dbeafe;
+        border-left: 4px solid #2563eb;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .hint p {
+        color: #1e40af;
+        margin: 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 2px solid #e2e8f0;
+        margin: 30px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Debugging Exercise - Inconsistent Item Pagination Metadata</h1>
+        <div class="subtitle">Investigate why the list endpoint reports changing totals as pagination advances.</div>
+      </div>
+
+      <h2>## 📋 Statement</h2>
+      <div class="bug-report">
+        <p>QA flagged an issue with the items list API while validating pagination in the dashboard. The item rows themselves look correct, and moving to later pages returns the expected subset of records, but the <code>count</code> field in the response starts dropping once a non-zero <code>skip</code> value is used.</p>
+        <p>This only seems to happen on the paginated list endpoint when requesting later slices of the same dataset. Default usage without a <code>skip</code> parameter still looks fine, and single-item endpoints are unaffected. The frontend team noticed that pagination controls become inconsistent because the reported total appears to shrink as the user advances through the list.</p>
+        <p>The defect compounds in a predictable way: every time the request offset increases, the returned total decreases by the same amount, even when the underlying matching records have not changed.</p>
+      </div>
+
+      <h2>## 🔴 Observed defective output</h2>
+
+      <div class="request-block">
+        <h3>1. First page</h3>
+        <pre><code>GET /api/v1/items/?skip=0&amp;limit=2
+
+200 OK
+{
+  "data": [
+    { "id": "a1", "title": "Item 5", "owner_id": "u1" },
+    { "id": "a2", "title": "Item 4", "owner_id": "u1" }
+  ],
+  "count": 5
+}</code></pre>
+        <div class="status correct">✅ Correct</div>
+        <p>The first page reports the full dataset size as expected.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>2. Second page</h3>
+        <pre><code>GET /api/v1/items/?skip=2&amp;limit=2
+
+200 OK
+{
+  "data": [
+    { "id": "a3", "title": "Item 3", "owner_id": "u1" },
+    { "id": "a4", "title": "Item 2", "owner_id": "u1" }
+  ],
+  "count": 3
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The returned items are plausible, but the total count should still describe all 5 matching items.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>3. Third page</h3>
+        <pre><code>GET /api/v1/items/?skip=4&amp;limit=2
+
+200 OK
+{
+  "data": [
+    { "id": "a5", "title": "Item 1", "owner_id": "u1" }
+  ],
+  "count": 1
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The number of returned rows changes correctly for the last page, but the total keeps shrinking with the offset.</p>
+      </div>
+
+      <table>
+        <tr>
+          <th>Offset sent</th>
+          <th>Items returned</th>
+          <th>Field value returned</th>
+          <th>Expected field value</th>
+        </tr>
+        <tr>
+          <td>0</td>
+          <td>2</td>
+          <td>count = 5</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>2</td>
+          <td>count = 3</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>1</td>
+          <td>count = 1</td>
+          <td>5</td>
+        </tr>
+      </table>
+
+      <h2>## 🗺️ File guide</h2>
+      <div class="file-guide">
+        <ol>
+          <li><strong>backend/app/api/routes/items.py</strong> — Inspect how the list endpoint builds both the paginated query result and the metadata returned alongside it.</li>
+          <li><strong>backend/app/models.py</strong> — Check what the response schema says the list payload fields are supposed to represent.</li>
+          <li><strong>backend/tests/api/routes/test_items.py</strong> — Review what the current tests assert for list responses and what pagination cases may be missing.</li>
+        </ol>
+      </div>
+
+      <h2>## 💡 Hint</h2>
+      <div class="hint">
+        <p>Which response value should describe the total number of matching records independently of pagination, and which values should change when the client asks for a different slice of that same dataset?</p>
+      </div>
+    </div>
+  </body>
+</html>

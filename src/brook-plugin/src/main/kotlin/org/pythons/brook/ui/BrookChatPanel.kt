@@ -59,6 +59,12 @@ class BrookChatPanel(private val project: Project) {
         addActionListener { onVerifyClicked() }
     }
 
+    private val activeExerciseLabel = com.intellij.ui.components.JBLabel("Active Exercise: None").apply {
+        font = font.deriveFont(java.awt.Font.BOLD)
+        border = JBUI.Borders.empty(8)
+        foreground = com.intellij.ui.JBColor.GRAY
+    }
+
     init {
         val scrollPane = JBScrollPane(chatHistory).apply {
             border = JBUI.Borders.empty()
@@ -85,6 +91,7 @@ class BrookChatPanel(private val project: Project) {
             add(inputPanel, BorderLayout.CENTER)
         }
 
+        root.add(activeExerciseLabel, BorderLayout.NORTH)
         root.add(scrollPane, BorderLayout.CENTER)
         root.add(bottomContainer, BorderLayout.SOUTH)
 
@@ -110,6 +117,10 @@ class BrookChatPanel(private val project: Project) {
                 }
             }
         }, project)
+    }
+
+    fun updateActiveExercise(title: String) {
+        activeExerciseLabel.text = "Active Exercise: $title"
     }
 
     /**
@@ -194,6 +205,7 @@ class BrookChatPanel(private val project: Project) {
             val result = BrookApiClient.chatStream(
                 repoPath = "target_repo",
                 specialty = state.specialty,
+                exerciseId = state.activeExerciseId,
                 message = text
             ) { chunk ->
                 // Consume Chunk real time!
@@ -231,6 +243,7 @@ class BrookChatPanel(private val project: Project) {
             val result = BrookApiClient.hintStream(
                 repoPath = "target_repo",
                 specialty = state.specialty,
+                exerciseId = state.activeExerciseId,
                 activeFile = ""
             ) { chunk ->
                 activeStreamText.append(chunk)
@@ -259,7 +272,8 @@ class BrookChatPanel(private val project: Project) {
         CoroutineScope(Dispatchers.IO).launch {
             val result = BrookApiClient.verify(
                 repoPath = "target_repo",
-                specialty = state.specialty
+                specialty = state.specialty,
+                exerciseId = state.activeExerciseId
             )
 
             ApplicationManager.getApplication().invokeLater {

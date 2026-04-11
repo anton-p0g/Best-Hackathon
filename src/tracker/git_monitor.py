@@ -74,14 +74,28 @@ class WorkspaceTracker:
                 tree_str += f"{subindent}📄 {f}\n"
         return tree_str
 
-    def get_state(self, speciality: Speciality = None) -> WorkspaceState:
+    def get_state(self, speciality: Speciality = None, exercise_id: str = "") -> WorkspaceState:
         """Add current directory context into a domain model."""
         if speciality is None:
             speciality = Speciality(speciality="UNKNOWN")
             
+        bug_sheet_content = ""
+        # Try to resolve BUG_SHEET.html
+        if exercise_id:
+            exercise_path = Path("exercises") / exercise_id / "BUG_SHEET.html"
+            if exercise_path.exists():
+                bug_sheet_content = exercise_path.read_text(encoding="utf-8")
+        
+        # Fallback to root directory if not found in exercises folder
+        if not bug_sheet_content:
+            root_bug_sheet = Path("BUG_SHEET.html")
+            if root_bug_sheet.exists():
+                bug_sheet_content = root_bug_sheet.read_text(encoding="utf-8")
+            
         return WorkspaceState(
             git_diff=self.get_git_diff(),
             active_file_content=self.get_active_file_content(),
+            bug_sheet_content=bug_sheet_content,
             directory_tree=self.get_directory_tree(),
             speciality=speciality.model_dump() if hasattr(speciality, 'model_dump') else speciality.dict()
         )

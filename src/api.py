@@ -48,6 +48,7 @@ class InjectRequest(BaseModel):
 class HintRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
+    exercise_id: str = ""
     message: str = ""
     active_file: str = ""        # optional: content of the currently open file
 
@@ -55,10 +56,17 @@ class HintRequest(BaseModel):
 class ChatRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
+    exercise_id: str = ""
     message: str
 
 
 class VerifyRequest(BaseModel):
+    repo_path: str = "target_repo"
+    speciality: str = "Auth"
+    exercise_id: str = ""
+
+
+class GenerateExerciseRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
 
@@ -95,7 +103,7 @@ def hint(req: HintRequest):
 
     def event_stream():
         stream = service.process_message(
-            req.message, speciality=speciality, is_hint_trigger=True
+            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=True
         )
         for chunk in stream:
             # SSE format: each event is "data: <payload>\n\n"
@@ -113,7 +121,7 @@ def chat(req: ChatRequest):
 
     def event_stream():
         stream = service.process_message(
-            req.message, speciality=speciality, is_hint_trigger=False
+            req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=False
         )
         for chunk in stream:
             yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -127,7 +135,7 @@ def verify(req: VerifyRequest):
     """Grade the student's current code and return a JSON verdict."""
     service = _get_service(req.repo_path)
     speciality = Speciality(speciality=req.speciality)
-    result = service.verify_solution(speciality=speciality)
+    result = service.verify_solution(speciality=speciality, exercise_id=req.exercise_id)
     return result
 
 
@@ -173,3 +181,25 @@ def get_exercise_file(exercise_id: str, file_name: str):
     
     from fastapi.responses import HTMLResponse
     return HTMLResponse(content)
+
+
+@app.post("/generate-exercise")
+def generate_exercise(req: GenerateExerciseRequest):
+    """Dynamically generate a new debugging exercise using the LangGraph agent."""
+    from edu.runner import run, generate_tree
+
+    try:
+        tree = generate_tree(req.repo_path)
+        result = run(tree, speciality=req.speciality)
+        return {
+            "status": "ok",
+            "exercise_id": result["exercise_id"],
+            "patched_file": result["patched_file"],
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "detail": str(e)},
+        )

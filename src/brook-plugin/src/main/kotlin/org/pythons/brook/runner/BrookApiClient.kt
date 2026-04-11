@@ -35,13 +35,13 @@ object BrookApiClient {
     data class InjectResponse(val status: String, val directory_tree: String, val git_diff: String)
 
     @Serializable
-    data class HintRequest(val repo_path: String, val speciality: String, val message: String = "", val active_file: String = "")
+    data class HintRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val message: String = "", val active_file: String = "")
 
     @Serializable
-    data class ChatRequest(val repo_path: String, val speciality: String, val message: String)
+    data class ChatRequest(val repo_path: String, val speciality: String, val exercise_id: String = "", val message: String)
 
     @Serializable
-    data class VerifyRequest(val repo_path: String, val speciality: String)
+    data class VerifyRequest(val repo_path: String, val speciality: String, val exercise_id: String = "")
 
     @Serializable
     data class VerifyResponse(val solved: Boolean, val feedback: String)
@@ -58,6 +58,12 @@ object BrookApiClient {
 
     @Serializable
     data class ExercisesResponse(val exercises: List<ExerciseDto>)
+
+    @Serializable
+    data class GenerateExerciseRequest(val repo_path: String, val speciality: String)
+
+    @Serializable
+    data class GenerateExerciseResponse(val status: String, val exercise_id: String, val patched_file: String)
 
     // ── API Methods ──
 
@@ -96,14 +102,14 @@ object BrookApiClient {
     fun hintStream(
         repoPath: String,
         specialty: String,
-        message: String = "",
+        exerciseId: String = "",
         activeFile: String = "",
         onChunk: (String) -> Unit
     ): Result<String> {
         return try {
             val body = json.encodeToString(
                 HintRequest.serializer(),
-                HintRequest(repoPath, specialty, message, activeFile)
+                HintRequest(repoPath, specialty, exerciseId, message = "", active_file = activeFile)
             )
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/hint"))
@@ -126,13 +132,14 @@ object BrookApiClient {
     fun chatStream(
         repoPath: String,
         specialty: String,
+        exerciseId: String = "",
         message: String,
         onChunk: (String) -> Unit
     ): Result<String> {
         return try {
             val body = json.encodeToString(
                 ChatRequest.serializer(),
-                ChatRequest(repoPath, specialty, message)
+                ChatRequest(repoPath, specialty, exerciseId, message)
             )
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/chat"))
@@ -188,9 +195,9 @@ object BrookApiClient {
     /**
      * Calls POST /verify to grade the student's solution.
      */
-    fun verify(repoPath: String, specialty: String): Result<VerifyResponse> {
+    fun verify(repoPath: String, specialty: String, exerciseId: String = ""): Result<VerifyResponse> {
         return try {
-            val body = json.encodeToString(VerifyRequest.serializer(), VerifyRequest(repoPath, specialty))
+            val body = json.encodeToString(VerifyRequest.serializer(), VerifyRequest(repoPath, specialty, exerciseId))
             val request = HttpRequest.newBuilder()
                 .uri(URI.create("$BASE_URL/verify"))
                 .header("Content-Type", "application/json")
@@ -272,6 +279,35 @@ object BrookApiClient {
             Result.success(response.body())
         } catch (e: Exception) {
             LOG.error("Failed to fetch exercise content", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Calls POST /generate-exercise to dynamically create a new exercise.
+     * This is a long-running call (LLM agent) so we use a generous timeout.
+     */
+    fun generateExercise(repoPath: String, specialty: String): Result<GenerateExerciseResponse> {
+        return try {
+            val body = json.encodeToString(
+                GenerateExerciseRequest.serializer(),
+                GenerateExerciseRequest(repoPath, specialty)
+            )
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$BASE_URL/generate-exercise"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .timeout(Duration.ofSeconds(180))  // Agent can take a while
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() != 200) {
+                return Result.failure(RuntimeException("Backend returned ${response.statusCode()}: ${response.body()}"))
+            }
+
+            Result.success(json.decodeFromString(GenerateExerciseResponse.serializer(), response.body()))
+        } catch (e: Exception) {
+            LOG.error("Brook API generate-exercise failed", e)
             Result.failure(e)
         }
     }

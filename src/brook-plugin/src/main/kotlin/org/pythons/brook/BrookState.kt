@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project
 class BrookState {
 
     var specialty: String = ""
+    var activeExerciseId: String = ""
     var issuesInjected: Boolean = false
     var sessionCount: Int = 0
 
