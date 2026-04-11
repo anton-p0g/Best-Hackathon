@@ -15,46 +15,58 @@ import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 
-class MarkdownViewerPanel(
-    private val exerciseId: String,
-    private val fileName: String
-) {
+/**
+ * Displays an exercise as HTML inside a shared [JBCefBrowser].
+ *
+ * The browser instance is injected from outside so that the same Chromium
+ * process is reused across exercises — creating a second JBCefBrowser while
+ * the first is still alive causes JCEF to silently fail on the new tab.
+ *
+ * Call [loadExercise] to (re-)load a different exercise into the same panel.
+ */
+class MarkdownViewerPanel(browser: JBCefBrowser) {
 
     val root = JPanel(BorderLayout())
-    private val browser = JBCefBrowser()
+    private val sharedBrowser = browser
+    private var titleLabel: JBLabel? = null
 
     init {
         buildUI()
-        loadExerciseContent()
     }
 
-    private fun loadExerciseContent() {
+    /** Load (or reload) a new exercise into the existing browser. */
+    fun loadExercise(exerciseId: String, fileName: String) {
+        titleLabel?.text = "${exerciseId.replaceFirstChar { it.uppercase() }} · $fileName"
+        loadExerciseContent(exerciseId, fileName)
+    }
+
+    private fun loadExerciseContent(exerciseId: String, fileName: String) {
         // Initial state
-        browser.loadHTML("<html><body><h3>Loading exercise content...</h3></body></html>")
-        
+        sharedBrowser.loadHTML("<html><body><h3>Loading exercise content...</h3></body></html>")
+
         CoroutineScope(Dispatchers.IO).launch {
             val result = BrookApiClient.getExerciseContent(exerciseId, fileName)
-            
+
             withContext(Dispatchers.Main) {
                 if (result.isSuccess) {
                     val rawHtml = result.getOrNull() ?: ""
                     println("Brook: Fetched content for $exerciseId, ${rawHtml.length} bytes.")
-                    
+
                     try {
                         // Check if it's already a full HTML document
-                        val contentToLoad = if (rawHtml.trim().startsWith("<html", ignoreCase = true) || 
-                                              rawHtml.trim().startsWith("<!DOCTYPE", ignoreCase = true)) {
+                        val contentToLoad = if (rawHtml.trim().startsWith("<html", ignoreCase = true) ||
+                            rawHtml.trim().startsWith("<!DOCTYPE", ignoreCase = true)) {
                             // Minimal injection for full documents
                             RAW_INJECT_STYLES + rawHtml
                         } else {
                             injectStyles(rawHtml)
                         }
-                        
-                        browser.loadHTML(contentToLoad)
+
+                        sharedBrowser.loadHTML(contentToLoad)
                         println("Brook: Successfully sent HTML to JBCefBrowser.")
                     } catch (e: Exception) {
                         println("Brook: Error during HTML injection: ${e.message}")
-                        browser.loadHTML("<html><body><h3>Error rendering HTML</h3><pre>${e.stackTraceToString()}</pre></body></html>")
+                        sharedBrowser.loadHTML("<html><body><h3>Error rendering HTML</h3><pre>${e.stackTraceToString()}</pre></body></html>")
                     }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
@@ -66,7 +78,7 @@ class MarkdownViewerPanel(
                         <button onclick='window.location.reload()'>Retry</button>
                         </body></html>
                     """.trimIndent()
-                    browser.loadHTML(errorHtml)
+                    sharedBrowser.loadHTML(errorHtml)
                 }
             }
         }
@@ -186,18 +198,18 @@ class MarkdownViewerPanel(
         val content = JPanel(BorderLayout())
         content.border = JBUI.Borders.empty(0)
 
-        // Top bar
+        // Top bar — label is updated by loadExercise() when the exercise changes
+        val label = JBLabel("").apply { font = font.deriveFont(Font.BOLD) }
+        titleLabel = label
+
         val topBar = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             border = JBUI.Borders.empty(8, 12, 8, 12)
-
-            add(JBLabel(
-                "${exerciseId.replaceFirstChar { it.uppercase() }} · $fileName"
-            ).apply { font = font.deriveFont(Font.BOLD) })
+            add(label)
             add(Box.createHorizontalGlue())
         }
         content.add(topBar, BorderLayout.NORTH)
-        content.add(browser.component, BorderLayout.CENTER)
+        content.add(sharedBrowser.component, BorderLayout.CENTER)
         root.add(content, BorderLayout.CENTER)
     }
 }

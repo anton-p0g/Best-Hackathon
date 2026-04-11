@@ -3,12 +3,14 @@ package org.pythons.brook.ui
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,11 +58,18 @@ class BrookToolWindowFactory : ToolWindowFactory {
 
         private val LOG = Logger.getInstance(BrookPanel::class.java)
         val root = JPanel(BorderLayout())
-        
+
         private val exercisesContainer = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             alignmentX = JPanel.LEFT_ALIGNMENT
         }
+
+        // Single browser + panel kept alive for the lifetime of the tool window.
+        // Reusing one JBCefBrowser avoids the JCEF creation-while-still-alive crash
+        // that causes the second exercise to silently fail to render.
+        private val sharedExerciseBrowser = JBCefBrowser()
+        private val exercisePanel = MarkdownViewerPanel(sharedExerciseBrowser)
+        private var exerciseContent: com.intellij.ui.content.Content? = null
 
         // — Specialty section —
         private val specialtyValueLabel = JBLabel("—").apply {
@@ -121,7 +130,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 }
                 add(buttonContainer)
                 add(Box.createRigidArea(Dimension(0, 12)))
-                
+
                 // Dynamic Exercises List
                 add(JSeparator())
                 add(Box.createRigidArea(Dimension(0, 10)))
@@ -132,7 +141,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 add(title)
                 add(Box.createRigidArea(Dimension(0, 8)))
                 add(exercisesContainer)
-                
+
                 // Pushes everything up
                 add(Box.createVerticalGlue())
             }
@@ -213,11 +222,17 @@ class BrookToolWindowFactory : ToolWindowFactory {
                         } else {
                             exercises.forEach { (id, label) ->
                                 val btn = JButton(label).apply {
-                                    alignmentX = JButton.CENTER_ALIGNMENT
-                                    maximumSize = Dimension(180, preferredSize.height)
+                                    preferredSize = Dimension(180, preferredSize.height + 4)
                                     addActionListener { openExerciseTab(id, label) }
                                 }
-                                exercisesContainer.add(btn)
+                                // Wrap in FlowLayout panel so BoxLayout centres it correctly,
+                                // same pattern as the "Start Brook" button above.
+                                val btnWrapper = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
+                                    alignmentX = JPanel.CENTER_ALIGNMENT
+                                    isOpaque = false
+                                    add(btn)
+                                }
+                                exercisesContainer.add(btnWrapper)
                                 exercisesContainer.add(Box.createRigidArea(Dimension(0, 4)))
                             }
                         }
@@ -233,19 +248,26 @@ class BrookToolWindowFactory : ToolWindowFactory {
 
         private fun openExerciseTab(exerciseId: String, title: String) {
             val contentManager = toolWindow.contentManager
-            
-            // Check if tab already exists
-            val existing = contentManager.contents.find { it.displayName == title }
-            if (existing != null) {
+            val fileName = "EXERCISE.html"
+
+            // Tell the shared panel to load the new exercise content.
+            // Because it owns the one-and-only JBCefBrowser, content is simply
+            // reloaded; no browser is ever created or destroyed mid-flight.
+            exercisePanel.loadExercise(exerciseId, fileName)
+
+            // If the exercise tab is already open, just update its title and select it.
+            val existing = exerciseContent
+            if (existing != null && contentManager.contents.contains(existing)) {
+                existing.displayName = title
                 contentManager.setSelectedContent(existing)
                 return
             }
 
-            // Create new panel
-            val panel = MarkdownViewerPanel(exerciseId, "EXERCISE.html")
-            val content = ContentFactory.getInstance().createContent(panel.root, title, false)
+            // First time: add the tab.
+            val content = ContentFactory.getInstance().createContent(exercisePanel.root, title, false)
             content.isCloseable = true
-            
+            exerciseContent = content
+
             contentManager.addContent(content)
             contentManager.setSelectedContent(content)
         }
