@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ejercicio de Depuración - Conduit Backend</title>
+    <title>Debugging Exercise - Conduit Backend</title>
     <style>
         * {
             margin: 0;
@@ -237,64 +237,64 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 Ejercicio de Depuración — Incorporación Conduit Backend</h1>
+            <h1>🔧 Debugging Exercise — Conduit Backend Onboarding</h1>
         </div>
 
-        <h2>📋 Descripción del Problema</h2>
+        <h2>📋 Problem Description</h2>
         
         <div class="bug-report">
-            <p><strong>Reporte de error — enviado por un ingeniero frontend del equipo web:</strong></p>
+            <p><strong>Bug report — submitted by a frontend engineer from the web team:</strong></p>
             
             <p>
-                "Estoy construyendo la vista de lista de artículos paginada y algo está mal con el conteo de artículos
-                que devuelve la API. Cuando cargo la primera página (<code>offset=0</code>) todo se ve bien — si hay
-                23 artículos que coinciden con un filtro de autor dado, la respuesta dice
-                <code>articlesCount: 20</code> (primera página, 20 elementos) y eso tiene sentido. Pero en el momento
-                en que obtengo la segunda página (<code>offset=20</code>) para obtener los 3 artículos restantes, la
-                respuesta dice <code>articlesCount: 23</code> aunque el array <code>articles</code> solo contiene 3
-                elementos. Mi lógica de paginación interpreta eso como 'todavía hay más páginas para obtener' y envía
-                una tercera solicitud — que regresa completamente vacía, con <code>articles: []</code> y
+                "I am building the paginated article list view and something is wrong with the article count
+                returned by the API. When I load the first page (<code>offset=0</code>) everything looks fine — if there are
+                23 articles matching a given author filter, the response says
+                <code>articlesCount: 20</code> (first page, 20 items) and that makes sense. But the moment
+                I fetch the second page (<code>offset=20</code>) to get the remaining 3 articles, the
+                response says <code>articlesCount: 23</code> even though the <code>articles</code> array only contains 3
+                items. My pagination logic interprets that as 'there are still more pages to fetch' and sends a
+                third request — which comes back completely empty, with <code>articles: []</code> and
                 <code>articlesCount: 20</code>."
             </p>
 
             <p>
-                "Pensé que era un error de frontend al principio, pero lo reproduje con curl contra la API de staging.
-                Solo sucede cuando pagino más allá de la primera página. Una llamada simple, sin paginar
-                (<code>offset=0</code>, predeterminado) siempre da un conteo consistente. Las búsquedas de artículos
-                individuales, el endpoint de feed, crear o actualizar artículos — ninguno de esos está afectado."
+                "I thought it was a frontend bug at first, but I reproduced it with curl against the staging API.
+                It only happens when I paginate past the first page. A simple, unpaginated call
+                (<code>offset=0</code>, default) always gives a consistent count. Single article lookups,
+                the feed endpoint, creating or updating articles — none of those are affected."
             </p>
 
             <p>
-                "Para hacer las cosas más extrañas: cuanto mayor es el offset que uso, mayor se vuelve el conteo falso,
-                incluso cuando la lista de artículos en sí es corta. Se siente como si el conteo estuviera de alguna
-                manera 'acumulando' el valor del offset en lugar de simplemente reflejar cuántos artículos regresaron."
+                "To make things weirder: the larger the offset I use, the larger the fake count gets,
+                even when the article list itself is short. It feels like the count is somehow
+                'accumulating' the offset value instead of just reflecting how many articles came back."
             </p>
         </div>
 
         <hr>
 
-        <h2>🔴 Salida Defectuosa Observada</h2>
+        <h2>🔴 Observed Faulty Output</h2>
 
-        <h3>Secuencia de solicitudes que reproduce el problema</h3>
+        <h3>Request sequence that reproduces the problem</h3>
 
         <div class="request-block">
-            <h3>Paso 1 — Primera página (se ve correcto)</h3>
+            <h3>Step 1 — First page (looks correct)</h3>
             <pre>GET /api/articles?author=johndoe&limit=20&offset=0
 Authorization: Token &lt;valid_token&gt;</pre>
             <pre><code>{
   "articles": [
     { "slug": "article-1", "title": "Article 1", "author": { "username": "johndoe" }, "...": "..." },
     { "slug": "article-2", "title": "Article 2", "author": { "username": "johndoe" }, "...": "..." },
-    "... 18 elementos más ..."
+    "... 18 more items ..."
   ],
   "articlesCount": 20
 }</code></pre>
-            <span class="status correct">✅ Correcto</span>
-            <p><code>articlesCount</code> (20) coincide con <code>articles.length</code> (20). Se ve bien.</p>
+            <span class="status correct">✅ Correct</span>
+            <p><code>articlesCount</code> (20) matches <code>articles.length</code> (20). Looks good.</p>
         </div>
 
         <div class="request-block">
-            <h3>Paso 2 — Segunda página (aparece el error)</h3>
+            <h3>Step 2 — Second page (bug appears)</h3>
             <pre>GET /api/articles?author=johndoe&limit=20&offset=20
 Authorization: Token &lt;valid_token&gt;</pre>
             <pre><code>{
@@ -305,52 +305,52 @@ Authorization: Token &lt;valid_token&gt;</pre>
   ],
   "articlesCount": 23
 }</code></pre>
-            <span class="status wrong">❌ Incorrecto</span>
-            <p><code>articlesCount</code> es <strong>23</strong>, pero <code>articles.length</code> es solo <strong>3</strong>.
-               Un cliente que confía en <code>articlesCount</code> creerá que existe una tercera página.</p>
+            <span class="status wrong">❌ Incorrect</span>
+            <p><code>articlesCount</code> is <strong>23</strong>, but <code>articles.length</code> is only <strong>3</strong>.
+               A client trusting <code>articlesCount</code> will believe a third page exists.</p>
         </div>
 
         <div class="request-block">
-            <h3>Paso 3 — Tercera página fantasma (agrava el daño)</h3>
+            <h3>Step 3 — Ghost third page (compounds the damage)</h3>
             <pre>GET /api/articles?author=johndoe&limit=20&offset=40
 Authorization: Token &lt;valid_token&gt;</pre>
             <pre><code>{
   "articles": [],
   "articlesCount": 40
 }</code></pre>
-            <span class="status wrong">❌ Incorrecto</span>
-            <p><code>articles</code> está vacío, pero <code>articlesCount</code> es <strong>40</strong> — sigue
-               creciendo con el valor del offset. Un cliente de scroll infinito entraría en un bucle infinito.</p>
+            <span class="status wrong">❌ Incorrect</span>
+            <p><code>articles</code> is empty, but <code>articlesCount</code> is <strong>40</strong> — it keeps
+               growing with the offset value. An infinite scroll client would enter an infinite loop.</p>
         </div>
 
-        <h3>Relación entre offset y el conteo inflado</h3>
+        <h3>Relationship between offset and the inflated count</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Solicitud</th>
-                    <th><code>offset</code> enviado</th>
-                    <th><code>articles</code> devueltos</th>
-                    <th><code>articlesCount</code> devuelto</th>
-                    <th><code>articlesCount</code> esperado</th>
+                    <th>Request</th>
+                    <th><code>offset</code> sent</th>
+                    <th><code>articles</code> returned</th>
+                    <th><code>articlesCount</code> returned</th>
+                    <th>Expected <code>articlesCount</code></th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>Página 1</td>
+                    <td>Page 1</td>
                     <td>0</td>
                     <td>20</td>
                     <td>20</td>
                     <td>20 ✅</td>
                 </tr>
                 <tr>
-                    <td>Página 2</td>
+                    <td>Page 2</td>
                     <td>20</td>
                     <td>3</td>
                     <td>23</td>
                     <td>3 ❌</td>
                 </tr>
                 <tr>
-                    <td>Página 3 (fantasma)</td>
+                    <td>Page 3 (ghost)</td>
                     <td>40</td>
                     <td>0</td>
                     <td>40</td>
@@ -360,48 +360,47 @@ Authorization: Token &lt;valid_token&gt;</pre>
         </table>
 
         <div class="pattern-note">
-            <p>Observa el patrón: <code>articlesCount</code> = <code>articles.length</code> + <code>offset</code>.<br>
-            El valor del offset se está filtrando en el campo count.</p>
+            <p>Notice the pattern: <code>articlesCount</code> = <code>articles.length</code> + <code>offset</code>.<br>
+            The offset value is leaking into the count field.</p>
         </div>
 
         <hr>
 
-        <h2>🗺️ Guía de Archivos</h2>
+        <h2>🗺️ File Guide</h2>
         <div class="file-guide">
-            <p>Trabaja con estos archivos <strong>en orden</strong>:</p>
+            <p>Work through these files <strong>in order</strong>:</p>
             <ol>
                 <li>
-                    <strong><code>app/models/schemas/articles.py</code></strong> — Comienza aquí para entender cómo
-                    se ve <code>ListOfArticlesInResponse</code> y qué contrato se supone que debe cumplir
-                    <code>articles_count</code> según el esquema.
+                    <strong><code>app/models/schemas/articles.py</code></strong> — Start here to understand what
+                    <code>ListOfArticlesInResponse</code> looks like and what contract <code>articles_count</code>
+                    is supposed to fulfill according to the schema.
                 </li>
                 <li>
-                    <strong><code>app/api/routes/articles/articles_resource.py</code></strong> — Encuentra el
-                    manejador de ruta que construye y devuelve un <code>ListOfArticlesInResponse</code>; presta
-                    mucha atención a exactamente cómo se puebla cada campo de ese objeto de respuesta.
+                    <strong><code>app/api/routes/articles/articles_resource.py</code></strong> — Find the
+                    route handler that builds and returns a <code>ListOfArticlesInResponse</code>; pay
+                    close attention to exactly how each field of that response object is populated.
                 </li>
                 <li>
-                    <strong><code>app/api/dependencies/articles.py</code></strong> — Inspecciona cómo se construye
-                    <code>ArticlesFilters</code> a partir de los parámetros de consulta entrantes; esto te dirá
-                    qué valores están disponibles para el manejador de ruta en el momento de la construcción de la
-                    respuesta.
+                    <strong><code>app/api/dependencies/articles.py</code></strong> — Inspect how
+                    <code>ArticlesFilters</code> is constructed from incoming query parameters; this will tell you
+                    what values are available to the route handler at the time of response construction.
                 </li>
                 <li>
-                    <strong><code>app/db/repositories/articles.py</code></strong> — Verifica qué devuelve realmente
-                    <code>filter_articles</code> y si el repositorio en sí es consciente del estado de paginación,
-                    para confirmar si el problema está en la capa de persistencia o por encima de ella.
+                    <strong><code>app/db/repositories/articles.py</code></strong> — Verify what
+                    <code>filter_articles</code> actually returns and whether the repository itself is aware of the pagination state,
+                    to confirm if the issue is in the persistence layer or above it.
                 </li>
             </ol>
         </div>
 
         <hr>
 
-        <h2>💡 Pista</h2>
+        <h2>💡 Hint</h2>
         <div class="hint">
             <p>
-                Si <code>articlesCount</code> debe reflejar el número de artículos en la respuesta actual, ¿por qué
-                un valor que describe la <em>solicitud</em> (en lugar del <em>resultado</em>) necesitaría aparecer
-                en la expresión que lo calcula?
+                If <code>articlesCount</code> should reflect the number of articles in the current response, why would
+                a value describing the <em>request</em> (instead of the <em>result</em>) need to appear
+                in the expression calculating it?
             </p>
         </div>
     </div>

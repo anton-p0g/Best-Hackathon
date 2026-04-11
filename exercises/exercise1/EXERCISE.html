@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EXERCISE.md - Ejercicio de Depuración</title>
+    <title>EXERCISE.md - Debugging Exercise</title>
     <style>
         * {
             margin: 0;
@@ -193,94 +193,94 @@
     <div class="container">
         <div class="header">
             <h1>EXERCISE.md</h1>
-            <p class="subtitle">Incorporación de desarrolladores — ejercicio de depuración</p>
+            <p class="subtitle">Developer Onboarding — Debugging Exercise</p>
         </div>
 
-        <h2>📋 Descripción del Problema</h2>
+        <h2>📋 Problem Description</h2>
         <p>
-            Hola, creo que hay un error en el endpoint de lista de elementos. Cuando cargo la primera página de
-            elementos (<code>skip=0</code>) los controles de paginación en la UI se ven completamente bien — el conteo
-            total coincide con lo que veo en la base de datos. Pero en el momento en que avanzo a la siguiente página
-            (<code>skip=10</code>, <code>skip=20</code>, etc.) el conteo total que devuelve la API comienza a disminuir.
-            Para cuando estoy en la tercera o cuarta página, el frontend piensa que hay muchos menos elementos de los
-            que realmente hay y deja de renderizar el botón "siguiente página" por completo.
+            Hi, I think there is a bug in the items list endpoint. When I load the first page of
+            items (<code>skip=0</code>) the pagination controls in the UI look completely fine — the total count
+            matches what I see in the database. But the moment I move to the next page
+            (<code>skip=10</code>, <code>skip=20</code>, etc.) the total count returned by the API starts to decrease.
+            By the time I am on the third or fourth page, the frontend thinks there are many fewer items than
+            there actually are and stops rendering the "next page" button altogether.
         </p>
         <p>
-            Lo extraño es que el array <code>data</code> en sí siempre es correcto — los elementos correctos regresan
-            en el orden correcto. Es solo el campo <code>count</code> en el sobre de respuesta el que está mal. Las
-            búsquedas de un solo elemento (<code>GET /items/{id}</code>), creaciones, actualizaciones y eliminaciones
-            se comportan normalmente, por lo que parece estar aislado a la lógica de paginación del endpoint de lista.
+            The strange thing is that the <code>data</code> array itself is always correct — the correct items come back
+            in the correct order. It is only the <code>count</code> field in the response envelope that is wrong. Single
+            item lookups (<code>GET /items/{id}</code>), creations, updates, and deletions
+            behave normally, so it seems to be isolated to the pagination logic of the list endpoint.
         </p>
         <p>
-            Una cosa más que vale la pena señalar: la discrepancia no es aleatoria ni de uno en uno — escala de manera
-            predecible con el valor <code>skip</code> que envío. Cuanto más lejos en la lista pagino, más incorrecto
-            se vuelve el número, lo que me hace pensar que algún parámetro de solicitud se está filtrando en un cálculo
-            en el que no debería estar involucrado.
+            One more thing worth noting: the discrepancy is not random or off-by-one — it scales predictably
+            with the <code>skip</code> value I send. The further down the list I paginate, the more incorrect
+            the number gets, which makes me think some request parameter is leaking into a calculation
+            it shouldn't be involved in.
         </p>
 
         <hr>
 
-        <h2>🔴 Salida Defectuosa Observada</h2>
-        <p>Asume que el usuario autenticado posee <strong>42 elementos</strong> en total.</p>
+        <h2>🔴 Observed Faulty Output</h2>
+        <p>Assume the authenticated user owns <strong>42 items</strong> in total.</p>
 
         <div class="request-block">
-            <h3>Solicitud 1 — primera página (offset predeterminado)</h3>
+            <h3>Request 1 — first page (default offset)</h3>
             <pre>GET /api/v1/items/?skip=0&limit=10
 Authorization: Bearer &lt;token&gt;</pre>
             <pre><code>{
-  "data": [ /* 10 elementos */ ],
+  "data": [ /* 10 items */ ],
   "count": 42
 }</code></pre>
-            <span class="status correct">✅ Correcto</span>
-            <p><code>count</code> refleja con precisión el número total de elementos propiedad del usuario.</p>
+            <span class="status correct">✅ Correct</span>
+            <p><code>count</code> accurately reflects the total number of items owned by the user.</p>
         </div>
 
         <div class="request-block">
-            <h3>Solicitud 2 — segunda página</h3>
+            <h3>Request 2 — second page</h3>
             <pre>GET /api/v1/items/?skip=10&limit=10
 Authorization: Bearer &lt;token&gt;</pre>
             <pre><code>{
-  "data": [ /* 10 elementos */ ],
+  "data": [ /* 10 items */ ],
   "count": 20
 }</code></pre>
-            <span class="status wrong">❌ Incorrecto</span>
-            <p><code>count</code> debería seguir siendo 42 (el total no ha cambiado), pero devuelve 20.</p>
+            <span class="status wrong">❌ Incorrect</span>
+            <p><code>count</code> should still be 42 (the total hasn't changed), but it returns 20.</p>
         </div>
 
         <div class="request-block">
-            <h3>Solicitud 3 — cuarta página</h3>
+            <h3>Request 3 — fourth page</h3>
             <pre>GET /api/v1/items/?skip=30&limit=10
 Authorization: Bearer &lt;token&gt;</pre>
             <pre><code>{
-  "data": [ /* 10 elementos */ ],
+  "data": [ /* 10 items */ ],
   "count": 40
 }</code></pre>
-            <span class="status wrong">❌ Incorrecto</span>
-            <p><code>count</code> debería ser 42 pero devuelve 40. El frontend ahora calcula solo 4 páginas totales
-               y oculta el botón "siguiente", aunque existen 2 elementos más.</p>
+            <span class="status wrong">❌ Incorrect</span>
+            <p><code>count</code> should be 42 but returns 40. The frontend now calculates only 4 total pages
+               and hides the "next" button, even though 2 more items exist.</p>
         </div>
 
         <div class="request-block">
-            <h3>Solicitud 4 — última página parcial</h3>
+            <h3>Request 4 — last partial page</h3>
             <pre>GET /api/v1/items/?skip=40&limit=10
 Authorization: Bearer &lt;token&gt;</pre>
             <pre><code>{
-  "data": [ /* 2 elementos */ ],
+  "data": [ /* 2 items */ ],
   "count": 42
 }</code></pre>
-            <span class="status correct">✅ Coincidentemente correcto en la última página</span>
-            <p><code>skip + len(data) = 40 + 2 = 42</code> resulta ser igual al total real, enmascarando el error
-               en el límite.</p>
+            <span class="status correct">✅ Coincidentally correct on the last page</span>
+            <p><code>skip + len(data) = 40 + 2 = 42</code> happens to equal the actual total, masking the error
+               at the boundary.</p>
         </div>
 
-        <h3>Resumen del Patrón</h3>
+        <h3>Pattern Summary</h3>
         <table>
             <thead>
                 <tr>
-                    <th><code>skip</code> enviado</th>
-                    <th>Elementos devueltos</th>
-                    <th><code>count</code> devuelto</th>
-                    <th><code>count</code> esperado</th>
+                    <th><code>skip</code> sent</th>
+                    <th>Items returned</th>
+                    <th><code>count</code> returned</th>
+                    <th>Expected <code>count</code></th>
                 </tr>
             </thead>
             <tbody>
@@ -312,45 +312,45 @@ Authorization: Bearer &lt;token&gt;</pre>
                     <td>40</td>
                     <td>2</td>
                     <td>42</td>
-                    <td>42 ✅ (coincidencia)</td>
+                    <td>42 ✅ (coincidence)</td>
                 </tr>
             </tbody>
         </table>
 
         <hr>
 
-        <h2>🗺️ Guía de Archivos</h2>
+        <h2>🗺️ File Guide</h2>
         <div class="file-guide">
             <ol>
                 <li>
-                    <strong><code>backend/app/models.py</code></strong> — Observa el esquema <code>ItemsPublic</code>
-                    para entender exactamente qué se supone que representa <code>count</code> y qué tipo espera.
+                    <strong><code>backend/app/models.py</code></strong> — Look at the <code>ItemsPublic</code> schema
+                    to understand exactly what <code>count</code> is supposed to represent and what type it expects.
                 </li>
                 <li>
-                    <strong><code>backend/app/api/routes/items.py</code></strong> — Aquí es donde vive el endpoint de
-                    lista; rastrea cómo se produce el valor que termina en el campo <code>count</code> de la respuesta,
-                    y de dónde proviene.
+                    <strong><code>backend/app/api/routes/items.py</code></strong> — This is where the list endpoint
+                    lives; trace how the value that ends up in the response's <code>count</code> field is produced,
+                    and where it comes from.
                 </li>
                 <li>
-                    <strong><code>backend/app/crud.py</code></strong> — Busca cualquier ayudante de listado de elementos
-                    para confirmar si el error está en la capa de consulta o en la capa de ruta superior.
+                    <strong><code>backend/app/crud.py</code></strong> — Look for any item listing helpers
+                    to confirm if the bug is in the query layer or the upper route layer.
                 </li>
                 <li>
-                    <strong><code>backend/tests/api/routes/test_items.py</code></strong> — Verifica qué escenarios de
-                    paginación cubren las pruebas existentes; puedes encontrar una brecha que permitió que este defecto
-                    pasara desapercibido.
+                    <strong><code>backend/tests/api/routes/test_items.py</code></strong> — Check what pagination scenarios
+                    the existing tests cover; you might find a gap that allowed this defect to slip
+                    through unnoticed.
                 </li>
             </ol>
         </div>
 
         <hr>
 
-        <h2>💡 Pista</h2>
+        <h2>💡 Hint</h2>
         <div class="hint">
             <p>
-                El campo <code>count</code> está destinado a describir una propiedad del <strong>conjunto de datos en
-                la base de datos</strong> — entonces, ¿por qué un valor que describe la <strong>posición del llamador
-                dentro de ese conjunto de datos</strong> sería parte del cálculo?
+                The <code>count</code> field is intended to describe a property of the <strong>dataset in the
+                database</strong> — so why would a value that describes the <strong>caller's position
+                within that dataset</strong> be part of the calculation?
             </p>
         </div>
     </div>
