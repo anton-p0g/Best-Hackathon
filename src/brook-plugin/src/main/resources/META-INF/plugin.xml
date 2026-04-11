@@ -1,0 +1,38 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>com.pythons.Brook</id>
+    <name>Brook</name>
+    <vendor url="https://github.com/tu-usuario/Brook">Pythons</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Persistent state: stores specialty and session data per project -->
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService
+                serviceInterface="org.pythons.brook.BrookState"
+                serviceImplementation="org.pythons.brook.BrookState"/>
+
+        <toolWindow
+                id="Brook"
+                anchor="right"
+                factoryClass="org.pythons.brook.ui.BrookToolWindowFactory"
+                icon="/icons/brook.svg"/>
+
+    </extensions>
+
+    <actions>
+
+        <!-- Hint button — visible in the main toolbar and via Find Action -->
+        <action
+                id="Brook.HintAction"
+                class="org.pythons.brook.ui.HintAction"
+                text="Brook: Get Hint"
+                description="Ask Brook for a hint about the current issue">
+            <add-to-group group-id="MainToolBar" anchor="last"/>
+            <keyboard-shortcut
+                    keymap="$default"
+                    first-keystroke="ctrl alt H"/>
+        </action>
+
+    </actions>
+</idea-plugin>
