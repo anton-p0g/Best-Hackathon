@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bug Sheet - Graph Title Uses Request Size Instead of Computed Estimate</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        border-bottom: 3px solid #dc2626;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      .warning-banner {
+        background: #fef2f2;
+        border: 2px solid #dc2626;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #991b1b;
+        font-weight: 600;
+      }
+
+      h1 {
+        color: #1e293b;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      h2 {
+        color: #1e293b;
+        font-size: 1.8em;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 4px solid #dc2626;
+      }
+
+      pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e2e8f0;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .file-path {
+        background: #dbeafe;
+        border-left: 4px solid #2563eb;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        color: #1e40af;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="warning-banner">Instructor only. Do not share this document with the developer.</div>
+        <h1>Bug Sheet</h1>
+        <p>Graph title uses a request-sized value instead of the actual computed estimate.</p>
+      </div>
+
+      <h2>Section 1 — File changed</h2>
+      <div class="file-path">target_repo/main.py</div>
+
+      <h2>Section 2 — Code before the change</h2>
+      <pre><code># target_repo/main.py, approximate lines 23-28
+    if graficar:
+        plt.figure()
+        plt.scatter(dentro_x, dentro_y, s=1)
+        plt.scatter(fuera_x, fuera_y, s=1)
+        plt.title(f"Aproximación de π ≈ {pi_aprox}")
+        plt.xlabel("x")</code></pre>
+
+      <h2>Section 3 — Code after the change (buggy version)</h2>
+      <pre><code># target_repo/main.py, approximate lines 23-28
+    if graficar:
+        plt.figure()
+        plt.scatter(dentro_x, dentro_y, s=1)
+        plt.scatter(fuera_x, fuera_y, s=1)
+        plt.title(f"Aproximación de π ≈ {pi_aprox / n}")
+        plt.xlabel("x")</code></pre>
+
+      <h2>Section 4 — Why this bug is subtle</h2>
+      <table>
+        <tr>
+          <th>Row label</th>
+          <th>Content</th>
+        </tr>
+        <tr>
+          <td>Crash?</td>
+          <td>No. The script runs normally, produces numeric output, and still renders the plot.</td>
+        </tr>
+        <tr>
+          <td>First affected path</td>
+          <td>Only the plotting path when <code>graficar=True</code>, specifically the chart title shown after the Monte Carlo run.</td>
+        </tr>
+        <tr>
+          <td>Unaffected paths</td>
+          <td>Console-only executions, return values from <code>aproximar_pi</code>, and all runs where the caller does not inspect the graph title remain apparently correct.</td>
+        </tr>
+        <tr>
+          <td>Why it survives code review</td>
+          <td>The expression still references a legitimate local variable and looks mathematically plausible at a glance, especially because both <code>pi_aprox</code> and <code>n</code> are already used nearby.</td>
+        </tr>
+        <tr>
+          <td>Logical inconsistency</td>
+          <td>The function returns one estimate, but the visualization labels the same run with a second value derived from the request size, so the displayed result no longer describes the actual response.</td>
+        </tr>
+        <tr>
+          <td>Specific condition</td>
+          <td>The defect becomes obvious with larger sample counts because the title shrinks roughly in proportion to <code>1 / n</code>, even though the estimate itself should stay near π.</td>
+        </tr>
+        <tr>
+          <td>Cybersecurity angle</td>
+          <td>This mirrors a common security analytics bug class where a dashboard or report label is derived from an input parameter rather than the measured metric, leading to quietly misleading observability without breaking execution.</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

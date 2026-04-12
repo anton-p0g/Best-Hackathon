@@ -161,9 +161,28 @@ def list_exercises():
     for item in sorted(os.listdir(exercises_dir)):
         item_path = os.path.join(exercises_dir, item)
         if os.path.isdir(item_path):
+            # Fallback name based on directory name
             name = item.replace("-", " ").replace("_", " ").title()
             import re
             name = re.sub(r'(\d+)', r' \1', name).strip()
+            
+            # Try to extract the title from EXERCISE.html
+            html_path = os.path.join(item_path, "EXERCISE.html")
+            if os.path.isfile(html_path):
+                try:
+                    with open(html_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        match = re.search(r'<title>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
+                        if match:
+                            html_title = match.group(1).strip()
+                            # Optional: remove the "Debugging Exercise -" prefix if present
+                            if html_title.startswith("Debugging Exercise -"):
+                                html_title = html_title.replace("Debugging Exercise -", "", 1).strip()
+                            if html_title:
+                                name = html_title
+                except Exception:
+                    pass
+
             result.append({"id": item, "name": name})
     return {"exercises": result}
 
