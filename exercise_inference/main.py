@@ -1,8 +1,4 @@
-"""
-Standalone CLI entry point for the exercise generator.
-For API usage, call edu.runner.run() directly.
-"""
-from edu.runner import run, generate_tree
+from exercise_inference.runner import run, generate_tree
 
 
 if __name__ == "__main__":

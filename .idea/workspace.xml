@@ -6,8 +6,25 @@
   <component name="ChangeListManager">
     <list default="true" id="d63e5d2d-2d20-43d6-9a99-23ffec9016f6" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target_repo/backend/app/api/routes/items.py" beforeDir="false" afterPath="$PROJECT_DIR$/target_repo/backend/app/api/routes/items.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target_repo/backend/app/api/routes/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/target_repo/backend/app/api/routes/users.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/PROMPT.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/agent.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/runner.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/edu/tools.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/proyecto-test/.idea/workspace.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/run_server.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target_repo/src/app/api/v1/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/target_repo/src/app/api/v1/users.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target_repo_TEST/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target_repo_TEST/requirements.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_monitor.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_openai.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_verify.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_verify_active.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,17 +53,17 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/oliga/OneDrive/Desktop/Best-Hackathon/Best-Hackathon&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "exercise__backend__1775990941",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/oliga/OneDrive/Desktop/Best-Hackathon/Best-Hackathon"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>

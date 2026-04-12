@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bug Sheet - Paginated Item Count Drifts for Normal Users</title>
+    <title>Bug Sheet - Pagination Metadata Drift in Users List</title>
     <style>
       * {
         margin: 0;
@@ -114,45 +114,22 @@
     <div class="container">
       <div class="header">
         <div class="warning-banner">Instructor and reviewer reference only. Do not share with the developer.</div>
-        <h1>Bug Sheet - Paginated Item Count Drifts for Normal Users</h1>
+        <h1>Bug Sheet</h1>
+        <p>Pagination Metadata Drift in Users List</p>
       </div>
 
       <h2>Section 1 — File changed</h2>
-      <div class="file-path">target_repo/backend/app/api/routes/items.py</div>
+      <div class="file-path">target_repo/src/app/api/v1/users.py</div>
 
       <h2>Section 2 — Code before the change</h2>
-      <pre><code># target_repo/backend/app/api/routes/items.py, approximate lines 25-35
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == current_user.id)
-        )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .order_by(col(Item.created_at).desc())
-            .offset(skip)
-            .limit(limit)
-        )</code></pre>
+      <pre><code># target_repo/src/app/api/v1/users.py, approximate lines 43-45
+response: dict[str, Any] = paginated_response(crud_data=users_data, page=page, items_per_page=items_per_page)
+return response</code></pre>
 
       <h2>Section 3 — Code after the change (buggy version)</h2>
-      <pre><code># target_repo/backend/app/api/routes/items.py, approximate lines 25-35
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == current_user.id)
-        )
-        count = session.exec(count_statement).one() - skip
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .order_by(col(Item.created_at).desc())
-            .offset(skip)
-            .limit(limit)
-        )</code></pre>
+      <pre><code># target_repo/src/app/api/v1/users.py, approximate lines 43-45
+response: dict[str, Any] = paginated_response(crud_data=users_data, page=page, items_per_page=page)
+return response</code></pre>
 
       <h2>Section 4 — Why this bug is subtle</h2>
       <table>
@@ -162,35 +139,35 @@
         </tr>
         <tr>
           <td>Crash?</td>
-          <td>No. The endpoint still returns a valid JSON response with the expected schema.</td>
+          <td>No. The endpoint still returns a valid HTTP response and the user list data is still fetched correctly.</td>
         </tr>
         <tr>
           <td>First affected path</td>
-          <td><code>GET /api/v1/items/?skip=&gt;0</code> for a non-superuser account.</td>
+          <td><code>GET /users</code> when <code>page</code> and <code>items_per_page</code> differ, especially on later pages.</td>
         </tr>
         <tr>
           <td>Unaffected paths</td>
-          <td>Single-item reads, item creation, updates, deletes, and the superuser item list path all appear normal.</td>
-        </tr>
-        <tr>
-          <td>Visible symptom</td>
-          <td>The <code>count</code> field shrinks as <code>skip</code> increases, even though it should represent the total number of matching items.</td>
+          <td><code>GET /user/{username}</code>, create/update/delete user endpoints, and <code>GET /users</code> calls where <code>page=items_per_page</code> or the client ignores pagination metadata.</td>
         </tr>
         <tr>
           <td>Why it survives code review</td>
-          <td>The modified line looks like a plausible pagination adjustment, especially because the list query itself still uses <code>offset(skip)</code> correctly.</td>
+          <td>The function call still looks semantically correct because both variables are in scope, both are integers, and both are pagination-related names.</td>
         </tr>
         <tr>
-          <td>Logical inconsistency</td>
-          <td>The response mixes two concepts: total matching rows and the request offset. Only the returned page should depend on <code>skip</code>; the total count should not.</td>
+          <td>Wrong behavior</td>
+          <td>The response metadata is calculated using the requested page number as if it were the page size, so pagination fields drift while the returned records themselves remain correct.</td>
         </tr>
         <tr>
-          <td>Why tests may miss it</td>
-          <td>The existing item list test only checks that at least two items are returned and does not assert the <code>count</code> field or paginated behavior for normal users.</td>
+          <td>Specific inconsistency</td>
+          <td>The query uses the real <code>items_per_page</code> to fetch rows, but the response metadata uses <code>page</code>, causing a mismatch between the actual dataset slice and the reported pagination values.</td>
         </tr>
         <tr>
-          <td>How the defect compounds</td>
-          <td>Each larger <code>skip</code> value subtracts more from <code>count</code>, making pagination metadata increasingly wrong across later pages.</td>
+          <td>Why beginners may chase the wrong layer</td>
+          <td>Because the database call is correct and the data payload contains the expected users, the bug looks like a frontend pagination issue or a library quirk before it looks like a backend argument mix-up.</td>
+        </tr>
+        <tr>
+          <td>Compounding pattern</td>
+          <td>The reported page-size-related metadata changes in proportion to the requested page number, so the defect becomes more obvious only across multiple paginated calls.</td>
         </tr>
       </table>
     </div>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Debugging Exercise - Item List Count Changes with Pagination</title>
+    <title>Debugging Exercise - Users Pagination Metadata Mismatch</title>
     <style>
       * {
         margin: 0;
@@ -208,113 +208,130 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>Debugging Exercise - Item List Count Changes with Pagination</h1>
-        <div class="subtitle">Backend-focused onboarding exercise</div>
+        <h1>Debugging Exercise</h1>
+        <p class="subtitle">Users Pagination Metadata Mismatch</p>
       </div>
 
       <h2>## 📋 Statement</h2>
       <div class="bug-report">
-        <p>QA reported that the item list endpoint returns inconsistent pagination metadata for regular users. When a normal user opens their items page, the first request looks fine, but as soon as the frontend requests the next page using a non-zero <code>skip</code>, the <code>count</code> field in the response starts getting smaller. The actual API call still succeeds and the list data itself looks plausible, so nothing obviously breaks.</p>
-        <p>We were able to reproduce it only on the paginated list path for non-superusers. Default usage with <code>skip=0</code> appears correct, and admin users do not seem affected. The frontend team also noticed that the wrong value scales with the pagination offset, which causes the total shown in the UI to keep drifting downward as the user moves through later pages.</p>
+        <p>QA reported that the users listing endpoint is returning the correct user records for each page, but the pagination information in the response stops making sense once they move away from the default view. On page 1 things look normal, but when they request later pages while keeping the same page size, the metadata appears to change as if the page size were different from what was actually requested.</p>
+        <p>This only shows up on <code>GET /users</code> when using explicit pagination parameters such as <code>page=2</code> or <code>page=3</code> with a fixed <code>items_per_page</code>. Single-user lookups and other user endpoints seem unaffected, and even the list endpoint can look fine at a glance because the number of user objects returned in <code>data</code> still matches the requested limit.</p>
+        <p>The weird part is that the defect compounds as the requested page number increases. The farther QA paginates, the more the pagination fields drift away from what the frontend expects, even though the actual rows returned still look like the right slice from the dataset.</p>
       </div>
 
       <h2>## 🔴 Observed defective output</h2>
 
       <div class="request-block">
-        <h3>1) First page for a normal user</h3>
-        <pre><code>GET /api/v1/items/?skip=0&amp;limit=2
-Authorization: Bearer &lt;normal-user-token&gt;
+        <h3>1) First page with default-like values</h3>
+        <pre><code>GET /users?page=1&amp;items_per_page=10
 
-HTTP/1.1 200 OK
-Content-Type: application/json
-
+200 OK
 {
-  "data": [
-    { "id": "a1", "title": "Item 5", "owner_id": "u1", "created_at": "2026-04-12T10:00:00Z" },
-    { "id": "a2", "title": "Item 4", "owner_id": "u1", "created_at": "2026-04-12T09:00:00Z" }
-  ],
-  "count": 5
+  "data": [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}, {"id": 6}, {"id": 7}, {"id": 8}, {"id": 9}, {"id": 10}],
+  "pagination": {
+    "page": 1,
+    "items_per_page": 1,
+    "total": 35,
+    "pages": 35
+  }
 }</code></pre>
-        <div class="status correct">✅ Correct</div>
-        <p>The first page looks normal: 2 items returned, total count reported as 5.</p>
+        <div class="status wrong">❌ Data length is 10, but the reported page size is 1.</div>
       </div>
 
       <div class="request-block">
-        <h3>2) Second page for the same normal user</h3>
-        <pre><code>GET /api/v1/items/?skip=2&amp;limit=2
-Authorization: Bearer &lt;normal-user-token&gt;
+        <h3>2) Second page with the same requested page size</h3>
+        <pre><code>GET /users?page=2&amp;items_per_page=10
 
-HTTP/1.1 200 OK
-Content-Type: application/json
-
+200 OK
 {
-  "data": [
-    { "id": "a3", "title": "Item 3", "owner_id": "u1", "created_at": "2026-04-12T08:00:00Z" },
-    { "id": "a4", "title": "Item 2", "owner_id": "u1", "created_at": "2026-04-12T07:00:00Z" }
-  ],
-  "count": 3
+  "data": [{"id": 11}, {"id": 12}, {"id": 13}, {"id": 14}, {"id": 15}, {"id": 16}, {"id": 17}, {"id": 18}, {"id": 19}, {"id": 20}],
+  "pagination": {
+    "page": 2,
+    "items_per_page": 2,
+    "total": 35,
+    "pages": 18
+  }
 }</code></pre>
-        <div class="status wrong">❌ Wrong</div>
-        <p>The second page still returns valid items, but the total count should remain 5 instead of dropping to 3.</p>
+        <div class="status wrong">❌ The returned records still follow a page size of 10, but the metadata now claims the page size is 2.</div>
       </div>
 
       <div class="request-block">
-        <h3>3) Third page for the same normal user</h3>
-        <pre><code>GET /api/v1/items/?skip=4&amp;limit=2
-Authorization: Bearer &lt;normal-user-token&gt;
+        <h3>3) Third page with the same requested page size</h3>
+        <pre><code>GET /users?page=3&amp;items_per_page=10
 
-HTTP/1.1 200 OK
-Content-Type: application/json
-
+200 OK
 {
-  "data": [
-    { "id": "a5", "title": "Item 1", "owner_id": "u1", "created_at": "2026-04-12T06:00:00Z" }
-  ],
-  "count": 1
+  "data": [{"id": 21}, {"id": 22}, {"id": 23}, {"id": 24}, {"id": 25}, {"id": 26}, {"id": 27}, {"id": 28}, {"id": 29}, {"id": 30}],
+  "pagination": {
+    "page": 3,
+    "items_per_page": 3,
+    "total": 35,
+    "pages": 12
+  }
 }</code></pre>
-        <div class="status wrong">❌ Wrong</div>
-        <p>The number of remaining items on the page is smaller, but the total matching count should still be 5.</p>
+        <div class="status wrong">❌ The incorrect metadata scales with the page number rather than staying fixed at the requested page size.</div>
+      </div>
+
+      <div class="request-block">
+        <h3>4) Single-user lookup for comparison</h3>
+        <pre><code>GET /user/testuser
+
+200 OK
+{
+  "id": 11,
+  "name": "Test User",
+  "username": "testuser",
+  "email": "test@example.com",
+  "profile_image_url": "https://www.profileimageurl.com",
+  "tier_id": null
+}</code></pre>
+        <div class="status correct">✅ Non-paginated user retrieval appears normal.</div>
       </div>
 
       <table>
         <tr>
-          <th>Offset sent</th>
-          <th>Items returned</th>
-          <th>Field value returned</th>
-          <th>Expected field value</th>
+          <th>page sent</th>
+          <th>items_per_page sent</th>
+          <th>items returned</th>
+          <th>field value returned</th>
+          <th>expected field value</th>
         </tr>
         <tr>
-          <td>0</td>
-          <td>2</td>
-          <td>count = 5</td>
-          <td>count = 5</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>2</td>
-          <td>count = 3</td>
-          <td>count = 5</td>
-        </tr>
-        <tr>
-          <td>4</td>
           <td>1</td>
-          <td>count = 1</td>
-          <td>count = 5</td>
+          <td>10</td>
+          <td>10</td>
+          <td>items_per_page = 1</td>
+          <td>items_per_page = 10</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>10</td>
+          <td>10</td>
+          <td>items_per_page = 2</td>
+          <td>items_per_page = 10</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>10</td>
+          <td>10</td>
+          <td>items_per_page = 3</td>
+          <td>items_per_page = 10</td>
         </tr>
       </table>
 
       <h2>## 🗺️ File guide</h2>
       <div class="file-guide">
         <ol>
-          <li><strong>target_repo/backend/app/api/routes/items.py</strong> — Inspect how the paginated item list response is assembled and compare the list query with the metadata returned alongside it.</li>
-          <li><strong>target_repo/backend/app/models.py</strong> — Check what the item list response schema promises about the meaning of the <code>count</code> field.</li>
-          <li><strong>target_repo/backend/tests/api/routes/test_items.py</strong> — Review what behavior is currently covered for item listing and what pagination cases are not being asserted.</li>
+          <li><strong>src/app/api/v1/users.py</strong> — Check how the users list endpoint turns database results into the final paginated HTTP response.</li>
+          <li><strong>src/app/crud/crud_users.py</strong> — Confirm what inputs the CRUD layer accepts and whether the actual row selection logic is likely responsible for the mismatch.</li>
+          <li><strong>src/app/schemas/user.py</strong> — Review the user response model so you can separate item serialization concerns from pagination metadata concerns.</li>
+          <li><strong>tests/test_user.py</strong> — Look at what is currently asserted for the list endpoint and what important response details are not being validated.</li>
         </ol>
       </div>
 
       <h2>## 💡 Hint</h2>
       <div class="hint">
-        <p>Which values in a paginated response should describe the full result set, and which values should change only because the client requested a different page?</p>
+        <p>Which values in the list endpoint describe how many rows should be fetched versus how the response should describe that slice back to the client, and are those two responsibilities using the same source of truth?</p>
       </div>
     </div>
   </body>

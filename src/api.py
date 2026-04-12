@@ -4,9 +4,9 @@ Wraps the OnboardingService so any client (PyCharm plugin, Streamlit, etc.)
 can communicate over HTTP instead of importing Python directly.
 """
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -19,6 +19,8 @@ from fastapi import Request
 import os
 import shutil
 import subprocess
+
+from exercise_inference.runner import run, generate_tree
 
 load_dotenv()
 
@@ -41,7 +43,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors(), "body": body.decode("utf-8")},
     )
 
-# ── Request / Response DTOs ──────────────────────────────────────────
 class InjectRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
@@ -52,7 +53,7 @@ class HintRequest(BaseModel):
     speciality: str = "Auth"
     exercise_id: str = ""
     message: str = ""
-    active_file: str = ""        # optional: content of the currently open file
+    active_file: str = "" 
 
 
 class ChatRequest(BaseModel):
@@ -79,7 +80,6 @@ class CloneRepoRequest(BaseModel):
     repo_url: str
 
 
-# Service factory - one per repo_path
 _services: dict[str, OnboardingService] = {}
 
 
@@ -113,7 +113,6 @@ def hint(req: HintRequest):
             req.message, speciality=speciality, exercise_id=req.exercise_id, is_hint_trigger=True, active_file=req.active_file
         )
         for chunk in stream:
-            # SSE format: each event is "data: <payload>\n\n"
             yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -162,7 +161,6 @@ def list_exercises():
     for item in sorted(os.listdir(exercises_dir)):
         item_path = os.path.join(exercises_dir, item)
         if os.path.isdir(item_path):
-            # Format label similar to how the Kotlin UI did
             name = item.replace("-", " ").replace("_", " ").title()
             import re
             name = re.sub(r'(\d+)', r' \1', name).strip()
@@ -175,26 +173,20 @@ def get_exercise_file(exercise_id: str, file_name: str):
     """Return the raw file content of an exercise."""
     # Prevent directory traversal
     if ".." in exercise_id or ".." in file_name or "/" in file_name:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Invalid path")
     
     file_path = os.path.join("exercises", exercise_id, file_name)
     if not os.path.isfile(file_path):
-        from fastapi.responses import HTMLResponse
         return HTMLResponse(f"<p>Could not find {file_name}</p>", status_code=404)
         
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
-    
-    from fastapi.responses import HTMLResponse
     return HTMLResponse(content)
 
 
 @app.post("/generate-exercise")
 def generate_exercise(req: GenerateExerciseRequest):
     """Dynamically generate a new debugging exercise using the LangGraph agent."""
-    from edu.runner import run, generate_tree
-
     try:
         tree = generate_tree(req.repo_path)
         result = run(tree, speciality=req.speciality)
@@ -217,18 +209,13 @@ def clone_repo(req: CloneRepoRequest):
     """Clone a GitHub repository into target_repo, replacing any existing contents."""
     target = os.path.abspath("target_repo")
     temp_clone = os.path.join(target, "_clone_tmp")
- 
-    # Helper: clears the read-only flag on Windows and retries the failed fs operation.
-    # Needed because .git objects are marked read-only and shutil.rmtree fails on them
-    # with WinError 5 (Access Denied) without this callback.
+
     def force_remove_readonly(func, path, _exc_info):
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
  
     try:
-        # 1. Wipe target_repo contents (but keep the directory itself).
-        #    Use force_remove_readonly so any leftover .git read-only files are handled.
         if os.path.isdir(target):
             for entry in os.listdir(target):
                 entry_path = os.path.join(target, entry)
@@ -244,7 +231,6 @@ def clone_repo(req: CloneRepoRequest):
         else:
             os.makedirs(target, exist_ok=True)
  
-        # 2. Clone into a temporary subdirectory
         result = subprocess.run(
             ["git", "clone", "--depth", "1", req.repo_url, temp_clone],
             capture_output=True, text=True
@@ -255,15 +241,12 @@ def clone_repo(req: CloneRepoRequest):
                 content={"status": "error", "detail": f"git clone failed: {result.stderr.strip()}"},
             )
  
-        # 3. Move cloned contents up to target_repo root
         for entry in os.listdir(temp_clone):
             shutil.move(os.path.join(temp_clone, entry), os.path.join(target, entry))
  
-        # 4. Remove the now-empty temp directory
         if os.path.isdir(temp_clone):
             shutil.rmtree(temp_clone, onexc=force_remove_readonly)
  
-        # 5. Delete the .git folder so target_repo is a clean working copy
         git_dir = os.path.join(target, ".git")
         if os.path.isdir(git_dir):
             shutil.rmtree(git_dir, onexc=force_remove_readonly)
@@ -273,7 +256,6 @@ def clone_repo(req: CloneRepoRequest):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        # Clean up partial clone on failure
         if os.path.isdir(temp_clone):
             shutil.rmtree(temp_clone, onexc=force_remove_readonly)
         return JSONResponse(

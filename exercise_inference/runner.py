@@ -9,8 +9,8 @@ import re
 import time
 import subprocess
 
-from edu.agent import graph
-from edu.tools import write_full_file
+from exercise_inference.agent import graph
+from exercise_inference.tools import write_full_file
 
 
 def extract_json(text: str):

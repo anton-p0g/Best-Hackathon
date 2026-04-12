@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
-from edu.tools import read_file, write_full_file
+from exercise_inference.tools import read_file, write_full_file
 
 load_dotenv(find_dotenv())
 
