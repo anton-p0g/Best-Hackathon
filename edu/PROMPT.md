@@ -26,7 +26,7 @@ Do not guess file contents.
 
 ## Step 2 — Introduce the bug and generate the exercise
 
-Once you have received the file contents, introduce a **subtle but realistic bug** and
+Once you have received the file contents, YOU MUST IN ANY CASE introduce a **subtle but realistic bug** and
 produce **two separate HTML files** as described below. DO NOT INCLUDE COMMENTS.
 
 ### Criteria for the bug

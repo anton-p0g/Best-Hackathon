@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debugging Exercise - Item List Count Changes When Paging</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        color: #1e293b;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: #64748b;
+        font-size: 1.1em;
+        font-weight: 500;
+      }
+
+      h2 {
+        color: #1e293b;
+        font-size: 1.8em;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 4px solid #2563eb;
+      }
+
+      h3 {
+        color: #334155;
+        font-size: 1.3em;
+        margin-top: 25px;
+        margin-bottom: 15px;
+      }
+
+      p {
+        margin-bottom: 15px;
+        color: #475569;
+      }
+
+      .bug-report {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .bug-report p {
+        color: #7f1d1d;
+        margin-bottom: 15px;
+      }
+
+      .request-block {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .request-block h3 {
+        margin-top: 0;
+        color: #0f172a;
+      }
+
+      pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #dc2626;
+        font-size: 0.9em;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        color: #e2e8f0;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin: 10px 0;
+      }
+
+      .status.correct {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status.wrong {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e2e8f0;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .file-guide {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .file-guide ol {
+        margin-left: 20px;
+        margin-top: 15px;
+      }
+
+      .file-guide li {
+        margin-bottom: 15px;
+        color: #78350f;
+      }
+
+      .file-guide strong {
+        color: #92400e;
+      }
+
+      .hint {
+        background: #dbeafe;
+        border-left: 4px solid #2563eb;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .hint p {
+        color: #1e40af;
+        margin: 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 2px solid #e2e8f0;
+        margin: 30px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Debugging Exercise</h1>
+        <div class="subtitle">Backend onboarding: investigate an incorrect paginated response</div>
+      </div>
+
+      <h2>## 📋 Statement</h2>
+      <div class="bug-report">
+        <p>QA reported that the items list endpoint looks fine on the first page, but the total count shown to the UI changes as soon as pagination is used. The actual item rows returned for each page seem reasonable, yet the metadata used for pagination controls starts shrinking when the frontend sends a non-zero <code>skip</code>.</p>
+        <p>The issue is reproducible on <code>GET /api/v1/items/</code> when using pagination parameters such as <code>skip=1</code>, <code>skip=2</code>, and higher. Other item endpoints are unaffected, and the default list request without an offset appears normal. QA also noticed that the wrong value scales with the offset, which makes the pagination widget progressively less accurate on later pages.</p>
+      </div>
+
+      <h2>## 🔴 Observed defective output</h2>
+
+      <div class="request-block">
+        <h3>1) Default list request</h3>
+        <pre><code>GET /api/v1/items/?limit=2
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "data": [
+    { "id": "a1", "title": "Item A", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T09:00:00Z" },
+    { "id": "a2", "title": "Item B", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T08:00:00Z" }
+  ],
+  "count": 5
+}</code></pre>
+        <div class="status correct">✅ Correct</div>
+        <p>The first page returns two items and reports the full matching total.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>2) Second page request</h3>
+        <pre><code>GET /api/v1/items/?skip=1&amp;limit=2
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "data": [
+    { "id": "a2", "title": "Item B", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T08:00:00Z" },
+    { "id": "a3", "title": "Item C", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T07:00:00Z" }
+  ],
+  "count": 4
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The returned rows fit the requested offset, but the reported total should still be 5.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>3) Later page request</h3>
+        <pre><code>GET /api/v1/items/?skip=3&amp;limit=2
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "data": [
+    { "id": "a4", "title": "Item D", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T06:00:00Z" },
+    { "id": "a5", "title": "Item E", "description": "...", "owner_id": "u1", "created_at": "2026-04-12T05:00:00Z" }
+  ],
+  "count": 2
+}</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The list data remains plausible, but the total keeps decreasing in step with the offset.</p>
+      </div>
+
+      <table>
+        <tr>
+          <th>Offset sent</th>
+          <th>Items returned</th>
+          <th>Field value returned</th>
+          <th>Expected field value</th>
+        </tr>
+        <tr>
+          <td>0</td>
+          <td>2</td>
+          <td>5</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>2</td>
+          <td>4</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>2</td>
+          <td>2</td>
+          <td>5</td>
+        </tr>
+      </table>
+
+      <h2>## 🗺️ File guide</h2>
+      <div class="file-guide">
+        <ol>
+          <li><strong>backend/app/api/routes/items.py</strong> — Review how the list endpoint builds its response payload and compare the query inputs with the metadata it returns.</li>
+          <li><strong>backend/app/models.py</strong> — Check what the paginated response schema says the <code>count</code> field is supposed to represent.</li>
+          <li><strong>backend/tests/api/routes/test_items.py</strong> — Look at current coverage for item listing behavior and notice which pagination-specific expectation is missing.</li>
+          <li><strong>backend/app/crud.py</strong> — Confirm whether shared data-access helpers are involved or whether the inconsistency is introduced closer to the route layer.</li>
+        </ol>
+      </div>
+
+      <h2>## 💡 Hint</h2>
+      <div class="hint">
+        <p>Which response value should describe the total matching dataset regardless of page position, and which request value should affect only which slice of that dataset is returned?</p>
+      </div>
+    </div>
+  </body>
+</html>
