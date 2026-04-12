@@ -19,8 +19,8 @@ Do not generate any files until you have read the files you need.
 Based on the proyect structure, decide which files you need to read in order to introduce a
 meaningful bug and read those files.
 
-When you need to read files, you MUST use the available tools.
-Do not guess file contents.
+When you need to read files, you MUST use the available tools to read the files you have chosen.
+Do not guess file contents. 
 
 ---
 

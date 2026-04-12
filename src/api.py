@@ -19,6 +19,7 @@ from fastapi import Request
 import os
 import shutil
 import subprocess
+import time
 
 from exercise_inference.runner import run, generate_tree
 
@@ -161,9 +162,28 @@ def list_exercises():
     for item in sorted(os.listdir(exercises_dir)):
         item_path = os.path.join(exercises_dir, item)
         if os.path.isdir(item_path):
+            # Fallback name based on directory name
             name = item.replace("-", " ").replace("_", " ").title()
             import re
             name = re.sub(r'(\d+)', r' \1', name).strip()
+            
+            # Try to extract the title from EXERCISE.html
+            html_path = os.path.join(item_path, "EXERCISE.html")
+            if os.path.isfile(html_path):
+                try:
+                    with open(html_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        match = re.search(r'<title>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
+                        if match:
+                            html_title = match.group(1).strip()
+                            # Optional: remove the "Debugging Exercise -" prefix if present
+                            if html_title.startswith("Debugging Exercise -"):
+                                html_title = html_title.replace("Debugging Exercise -", "", 1).strip()
+                            if html_title:
+                                name = html_title
+                except Exception:
+                    pass
+
             result.append({"id": item, "name": name})
     return {"exercises": result}
 
@@ -206,7 +226,6 @@ def generate_exercise(req: GenerateExerciseRequest):
 
 @app.post("/clone-repo")
 def clone_repo(req: CloneRepoRequest):
-    """Clone a GitHub repository into target_repo, replacing any existing contents."""
     target = os.path.abspath("target_repo")
     temp_clone = os.path.join(target, "_clone_tmp")
 
@@ -214,8 +233,11 @@ def clone_repo(req: CloneRepoRequest):
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
- 
+
     try:
+        if os.path.isdir(temp_clone):
+            shutil.rmtree(temp_clone, onexc=force_remove_readonly)
+
         if os.path.isdir(target):
             for entry in os.listdir(target):
                 entry_path = os.path.join(target, entry)
@@ -230,7 +252,8 @@ def clone_repo(req: CloneRepoRequest):
                         os.remove(entry_path)
         else:
             os.makedirs(target, exist_ok=True)
- 
+            time.sleep(0.2)
+
         result = subprocess.run(
             ["git", "clone", "--depth", "1", req.repo_url, temp_clone],
             capture_output=True, text=True
@@ -238,21 +261,26 @@ def clone_repo(req: CloneRepoRequest):
         if result.returncode != 0:
             return JSONResponse(
                 status_code=400,
-                content={"status": "error", "detail": f"git clone failed: {result.stderr.strip()}"},
+                content={
+                    "status": "error", 
+                    "detail": f"git clone failed: {result.stderr}",  # sin .strip() para ver todo
+                    "stdout": result.stdout,
+                    "returncode": result.returncode
+                },
             )
- 
+
         for entry in os.listdir(temp_clone):
             shutil.move(os.path.join(temp_clone, entry), os.path.join(target, entry))
- 
+
         if os.path.isdir(temp_clone):
             shutil.rmtree(temp_clone, onexc=force_remove_readonly)
- 
+
         git_dir = os.path.join(target, ".git")
         if os.path.isdir(git_dir):
             shutil.rmtree(git_dir, onexc=force_remove_readonly)
- 
+
         return {"status": "ok", "message": f"Repository cloned into {target}"}
- 
+
     except Exception as e:
         import traceback
         traceback.print_exc()

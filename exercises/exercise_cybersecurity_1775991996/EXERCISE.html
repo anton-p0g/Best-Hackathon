@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debugging Exercise - Misreported Plot Metric During Sampled Analysis</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        color: #1e293b;
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: #64748b;
+        font-size: 1.1em;
+        font-weight: 500;
+      }
+
+      h2 {
+        color: #1e293b;
+        font-size: 1.8em;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 4px solid #2563eb;
+      }
+
+      h3 {
+        color: #334155;
+        font-size: 1.3em;
+        margin-top: 25px;
+        margin-bottom: 15px;
+      }
+
+      p {
+        margin-bottom: 15px;
+        color: #475569;
+      }
+
+      .bug-report {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .bug-report p {
+        color: #7f1d1d;
+        margin-bottom: 15px;
+      }
+
+      .request-block {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .request-block h3 {
+        margin-top: 0;
+        color: #0f172a;
+      }
+
+      pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 10px 0;
+        font-size: 0.9em;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #dc2626;
+        font-size: 0.9em;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        color: #e2e8f0;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin: 10px 0;
+      }
+
+      .status.correct {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status.wrong {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #e2e8f0;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .file-guide {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .file-guide ol {
+        margin-left: 20px;
+        margin-top: 15px;
+      }
+
+      .file-guide li {
+        margin-bottom: 15px;
+        color: #78350f;
+      }
+
+      .file-guide strong {
+        color: #92400e;
+      }
+
+      .hint {
+        background: #dbeafe;
+        border-left: 4px solid #2563eb;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 4px;
+      }
+
+      .hint p {
+        color: #1e40af;
+        margin: 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 2px solid #e2e8f0;
+        margin: 30px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Debugging Exercise</h1>
+        <div class="subtitle">Misreported plot metric during sampled analysis</div>
+      </div>
+
+      <h2>📋 Statement</h2>
+      <div class="bug-report">
+        <p>QA noticed something odd while reviewing a small Monte Carlo visualization that we sometimes use as a toy stand-in for sampled security telemetry. The command-line output looks reasonable, but when the plot is enabled, the number shown in the chart title is clearly inconsistent with the run that produced it. Instead of staying near the same estimate reported by the computation, the title becomes extremely small.</p>
+        <p>This only seems to happen on the graphing path. Plain runs that just print values to the console look normal, and the function still appears to return a plausible estimate. The issue is easiest to spot when increasing the sample size: the more points we analyze, the smaller the title value gets, even though the underlying estimate should not collapse like that.</p>
+        <p>From a security engineering perspective, this resembles a reporting integrity problem: a visualized metric is drifting with a request-sized parameter rather than reflecting the measured result of the sampled analysis. Please find and fix the backend logic so the displayed metric and the computed metric stay consistent.</p>
+      </div>
+
+      <h2>🔴 Observed defective output</h2>
+
+      <div class="request-block">
+        <h3>1) Baseline non-graph run</h3>
+        <pre><code>REQUEST
+aproximar_pi(100, graficar=False)
+
+RESPONSE
+3.12</code></pre>
+        <div class="status correct">✅ Correct</div>
+        <p>The returned estimate is plausible and there is no visualization involved.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>2) Same kind of run with graph enabled</h3>
+        <pre><code>REQUEST
+aproximar_pi(100, graficar=True)
+
+OBSERVED RESPONSE
+return value: 3.12
+plot title: "Aproximación de π ≈ 0.0312"</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The function returns a plausible estimate, but the plot title reports a value smaller by a factor tied to the sample size.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>3) Larger sampled run with graph enabled</h3>
+        <pre><code>REQUEST
+aproximar_pi(1000, graficar=True)
+
+OBSERVED RESPONSE
+return value: 3.144
+plot title: "Aproximación de π ≈ 0.003144"</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The displayed value gets even smaller as the sample count grows, while the returned estimate stays near π.</p>
+      </div>
+
+      <div class="request-block">
+        <h3>4) Main script graph path</h3>
+        <pre><code>REQUEST
+python main.py
+
+OBSERVED RESPONSE
+console output includes a plausible π estimate
+final generated chart title for 5000 points shows a value near 0.0006 instead of a value near 3.14</code></pre>
+        <div class="status wrong">❌ Wrong</div>
+        <p>The defect compounds with larger runs and is easiest to recognize in the final plotted example.</p>
+      </div>
+
+      <table>
+        <tr>
+          <th>Samples sent</th>
+          <th>Items processed</th>
+          <th>Field value returned</th>
+          <th>Field value shown in title</th>
+          <th>Expected title value</th>
+        </tr>
+        <tr>
+          <td>100</td>
+          <td>100</td>
+          <td>3.12</td>
+          <td>0.0312</td>
+          <td>3.12</td>
+        </tr>
+        <tr>
+          <td>1000</td>
+          <td>1000</td>
+          <td>3.144</td>
+          <td>0.003144</td>
+          <td>3.144</td>
+        </tr>
+        <tr>
+          <td>5000</td>
+          <td>5000</td>
+          <td>3.1416</td>
+          <td>0.00062832</td>
+          <td>3.1416</td>
+        </tr>
+      </table>
+
+      <h2>🗺️ File guide</h2>
+      <div class="file-guide">
+        <ol>
+          <li><strong>target_repo/main.py</strong> — Review how the computed estimate is produced, returned, and then reused when the optional visualization branch is enabled.</li>
+          <li><strong>target_repo/main.py.bak</strong> — Compare this copy with the active file to see whether the displayed metric and the returned metric are derived consistently.</li>
+        </ol>
+      </div>
+
+      <h2>💡 Hint</h2>
+      <div class="hint">
+        <p>When the graph is shown, does the number displayed in the title describe the measured result of the simulation, or has it accidentally become a function of how many samples were requested?</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -13,7 +13,7 @@ def load_prompt() -> str:
     with open(PROMPT_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
-llm = ChatOpenAI(model="gpt-5.4", temperature=0, api_key=os.getenv("OPENAI_API_KEY"))
+llm = ChatOpenAI(model="gpt-5.4", temperature=0.4, api_key=os.getenv("OPENAI_API_KEY"))
 
 tools = [read_file, write_full_file]
 
