@@ -10,6 +10,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.JBUI
@@ -202,16 +203,16 @@ class BrookToolWindowFactory : ToolWindowFactory {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
                 border = JBUI.Borders.empty(16)
                 isOpaque = false
-
+                add(Box.createRigidArea(Dimension(0, 50)))
                 // ── Hero header ─────────────────────────────────────────
                 val headerPanel = JPanel().apply {
                     layout = BoxLayout(this, BoxLayout.Y_AXIS)
                     alignmentX = JPanel.CENTER_ALIGNMENT
                     isOpaque = false
-                    border = JBUI.Borders.emptyBottom(8)
+                    border = JBUI.Borders.emptyBottom(6)
 
                     val titleLabel = JBLabel("Brook").apply {
-                        font = font.deriveFont(Font.BOLD, font.size + 8f)
+                        font = font.deriveFont(Font.BOLD, font.size + 16f)
                         foreground = accentColor
                         alignmentX = JBLabel.CENTER_ALIGNMENT
                         horizontalAlignment = SwingConstants.CENTER
@@ -229,7 +230,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     add(tagline)
                 }
                 add(headerPanel)
-                add(Box.createRigidArea(Dimension(0, 14)))
+                add(Box.createRigidArea(Dimension(0, 12)))
 
                 // ── Specialty card ───────────────────────────────────────
                 val specialtyCard = JPanel().apply {
@@ -261,7 +262,62 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     add(specialtyRow)
                 }
                 add(specialtyCard)
-                add(Box.createRigidArea(Dimension(0, 16)))
+                add(Box.createRigidArea(Dimension(0, 10)))
+
+                // ── Clone Repository card ────────────────────────────────
+                val cloneCard = JPanel().apply {
+                    layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                    alignmentX = JPanel.CENTER_ALIGNMENT
+                    isOpaque = false
+                    border = RoundedBorder(cardBorder, 12, 1, Insets(12, 16, 12, 16))
+                    maximumSize = Dimension(Int.MAX_VALUE, 90)
+
+                    val cloneHeader = JBLabel("CLONE REPOSITORY").apply {
+                        foreground = subtitleColor
+                        font = font.deriveFont(Font.BOLD, font.size - 2f)
+                        alignmentX = JBLabel.CENTER_ALIGNMENT
+                        horizontalAlignment = SwingConstants.CENTER
+                    }
+                    add(cloneHeader)
+                    add(Box.createRigidArea(Dimension(0, 8)))
+
+                    val repoInputField = JBTextField().apply {
+                        emptyText.text = "https://github.com/user/repo.git"
+                        maximumSize = Dimension(Int.MAX_VALUE, 32)
+                        border = BorderFactory.createCompoundBorder(
+                            RoundedBorder(cardBorder, 8, 1, Insets(0, 0, 0, 0)),
+                            JBUI.Borders.empty(4, 8)
+                        )
+                    }
+
+                    val cloneButton = StyledButton(
+                        "Clone", accentColor, Color.WHITE, accentHover, 8
+                    ).apply {
+                        preferredSize = Dimension(70, 30)
+                        maximumSize = Dimension(70, 30)
+                        font = font.deriveFont(Font.BOLD, font.size - 1f)
+                        border = JBUI.Borders.empty(4, 12)
+                        addActionListener {
+                            val url = repoInputField.text.trim()
+                            if (url.isNotBlank()) {
+                                LOG.info("Clone requested: $url")
+                                onCloneClicked(url)
+                            }
+                        }
+                    }
+
+                    val cloneRow = JPanel().apply {
+                        layout = BoxLayout(this, BoxLayout.X_AXIS)
+                        isOpaque = false
+                        alignmentX = JPanel.CENTER_ALIGNMENT
+                        add(repoInputField)
+                        add(Box.createRigidArea(Dimension(6, 0)))
+                        add(cloneButton)
+                    }
+                    add(cloneRow)
+                }
+                add(cloneCard)
+                add(Box.createRigidArea(Dimension(0, 12)))
 
                 // ── Status label ─────────────────────────────────────────
                 val statusWrapper = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
@@ -270,7 +326,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     add(statusLabel)
                 }
                 add(statusWrapper)
-                add(Box.createRigidArea(Dimension(0, 14)))
+                add(Box.createRigidArea(Dimension(0, 8)))
 
                 // ── Primary action: Start Brook ──────────────────────────
                 val startWrapper = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
@@ -280,7 +336,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     add(startButton)
                 }
                 add(startWrapper)
-                add(Box.createRigidArea(Dimension(0, 8)))
+                add(Box.createRigidArea(Dimension(0, 6)))
 
                 // ── Secondary action: Generate Exercise ──────────────────
                 val generateWrapper = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
@@ -290,7 +346,7 @@ class BrookToolWindowFactory : ToolWindowFactory {
                     add(generateButton)
                 }
                 add(generateWrapper)
-                add(Box.createRigidArea(Dimension(0, 20)))
+                add(Box.createRigidArea(Dimension(0, 14)))
 
                 // ── Section header: Available Exercises ───────────────────
                 val sectionHeader = JPanel().apply {
@@ -558,6 +614,26 @@ class BrookToolWindowFactory : ToolWindowFactory {
 
             // Now the browser is visible — load the exercise content.
             exercisePanel.loadExercise(exerciseId, fileName)
+        }
+
+        private fun onCloneClicked(repoUrl: String) {
+            setStatus("Cloning repository…")
+            startButton.isEnabled = false
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = BrookApiClient.cloneRepo(repoUrl = repoUrl)
+
+                ApplicationManager.getApplication().invokeLater {
+                    if (result.isSuccess) {
+                        setStatus("Repository cloned successfully!")
+                        startButton.isEnabled = true
+                    } else {
+                        val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        setStatus("Clone failed: $msg")
+                        startButton.isEnabled = true
+                    }
+                }
+            }
         }
 
         private fun setStatus(text: String) {

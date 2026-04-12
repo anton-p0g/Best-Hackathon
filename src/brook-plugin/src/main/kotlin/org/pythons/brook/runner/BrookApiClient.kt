@@ -65,6 +65,12 @@ object BrookApiClient {
     @Serializable
     data class GenerateExerciseResponse(val status: String, val exercise_id: String, val patched_file: String)
 
+    @Serializable
+    data class CloneRequest(val repo_url: String)
+
+    @Serializable
+    data class CloneResponse(val status: String, val path: String = "")
+
     // ── API Methods ──
 
     /**
@@ -309,6 +315,32 @@ object BrookApiClient {
             Result.success(json.decodeFromString(GenerateExerciseResponse.serializer(), response.body()))
         } catch (e: Exception) {
             LOG.error("Brook API generate-exercise failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Calls POST /clone-repo to clone a git repository.
+     */
+    fun cloneRepo(repoUrl: String): Result<CloneResponse> {
+        return try {
+            val body = json.encodeToString(CloneRequest.serializer(), CloneRequest(repoUrl))
+            LOG.info("Sending clone request for: $repoUrl")
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$BASE_URL/clone-repo"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .timeout(Duration.ofSeconds(120))
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() != 200) {
+                return Result.failure(RuntimeException("Backend returned ${response.statusCode()}: ${response.body()}"))
+            }
+
+            Result.success(json.decodeFromString(CloneResponse.serializer(), response.body()))
+        } catch (e: Exception) {
+            LOG.error("Brook API clone-repo failed", e)
             Result.failure(e)
         }
     }

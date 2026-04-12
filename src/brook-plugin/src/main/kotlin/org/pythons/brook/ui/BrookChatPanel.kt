@@ -129,12 +129,13 @@ class BrookChatPanel(private val project: Project) {
      */
     private fun buildBubbleHtml(sender: String, text: String, isBot: Boolean): String {
         // Safe colors
+        val fontFamily = UIUtil.getLabelFont().family
         val bubbleColor = if (isBot) JBColor(Color(0xE2E2E2), Color(0x3B3C3D))
                           else JBColor(Color(0xD1E4FF), Color(0x2D5488))
 
         val bgColorHex = ColorUtil.toHtmlColor(bubbleColor)
         val textColorHex = ColorUtil.toHtmlColor(JBColor.foreground())
-        val labelColorHex = if (isBot) "#3574F0" else "#548AF7"
+        val labelColorHex = if (isBot) "#a2f035ff" else "#fea771ff"
 
         val align = if (isBot) "left" else "right"
 
@@ -147,11 +148,11 @@ class BrookChatPanel(private val project: Project) {
                         <table border="0" cellspacing="0" cellpadding="8" bgcolor="$bgColorHex">
                             <tr>
                                 <td>
-                                    <font face="Verdana, sans-serif" size="2" color="$labelColorHex">
+                                    <font face="$fontFamily, sans-serif" size="3" color="$labelColorHex">
                                         <b>${if (isBot) "BROOK Agent" else "Me"}</b>
                                     </font><br>
-                                    <font face="Verdana, sans-serif" size="3" color="$textColorHex">
-                                        ${safeText}
+                                    <font face="$fontFamily, sans-serif" size="4" color="$textColorHex">
+                                        $safeText
                                     </font>
                                 </td>
                             </tr>

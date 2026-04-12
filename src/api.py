@@ -217,19 +217,33 @@ def clone_repo(req: CloneRepoRequest):
     """Clone a GitHub repository into target_repo, replacing any existing contents."""
     target = os.path.abspath("target_repo")
     temp_clone = os.path.join(target, "_clone_tmp")
-
+ 
+    # Helper: clears the read-only flag on Windows and retries the failed fs operation.
+    # Needed because .git objects are marked read-only and shutil.rmtree fails on them
+    # with WinError 5 (Access Denied) without this callback.
+    def force_remove_readonly(func, path, _exc_info):
+        import stat
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+ 
     try:
-        # 1. Wipe target_repo contents (but keep the directory itself)
+        # 1. Wipe target_repo contents (but keep the directory itself).
+        #    Use force_remove_readonly so any leftover .git read-only files are handled.
         if os.path.isdir(target):
             for entry in os.listdir(target):
                 entry_path = os.path.join(target, entry)
                 if os.path.isdir(entry_path):
-                    shutil.rmtree(entry_path)
+                    shutil.rmtree(entry_path, onexc=force_remove_readonly)
                 else:
-                    os.remove(entry_path)
+                    try:
+                        os.remove(entry_path)
+                    except PermissionError:
+                        import stat
+                        os.chmod(entry_path, stat.S_IWRITE)
+                        os.remove(entry_path)
         else:
             os.makedirs(target, exist_ok=True)
-
+ 
         # 2. Clone into a temporary subdirectory
         result = subprocess.run(
             ["git", "clone", "--depth", "1", req.repo_url, temp_clone],
@@ -240,33 +254,28 @@ def clone_repo(req: CloneRepoRequest):
                 status_code=400,
                 content={"status": "error", "detail": f"git clone failed: {result.stderr.strip()}"},
             )
-
+ 
         # 3. Move cloned contents up to target_repo root
         for entry in os.listdir(temp_clone):
             shutil.move(os.path.join(temp_clone, entry), os.path.join(target, entry))
-
+ 
         # 4. Remove the now-empty temp directory
         if os.path.isdir(temp_clone):
-            shutil.rmtree(temp_clone)
-
+            shutil.rmtree(temp_clone, onexc=force_remove_readonly)
+ 
         # 5. Delete the .git folder so target_repo is a clean working copy
         git_dir = os.path.join(target, ".git")
         if os.path.isdir(git_dir):
-            def force_remove_readonly(func, path, _exc_info):
-                """Clear read-only flag on Windows and retry delete."""
-                import stat
-                os.chmod(path, stat.S_IWRITE)
-                func(path)
             shutil.rmtree(git_dir, onexc=force_remove_readonly)
-
+ 
         return {"status": "ok", "message": f"Repository cloned into {target}"}
-
+ 
     except Exception as e:
         import traceback
         traceback.print_exc()
         # Clean up partial clone on failure
         if os.path.isdir(temp_clone):
-            shutil.rmtree(temp_clone)
+            shutil.rmtree(temp_clone, onexc=force_remove_readonly)
         return JSONResponse(
             status_code=500,
             content={"status": "error", "detail": str(e)},
