@@ -17,6 +17,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi import Request
 import os
+import shutil
+import subprocess
 
 load_dotenv()
 
@@ -71,6 +73,10 @@ class VerifyRequest(BaseModel):
 class GenerateExerciseRequest(BaseModel):
     repo_path: str = "target_repo"
     speciality: str = "Auth"
+
+
+class CloneRepoRequest(BaseModel):
+    repo_url: str
 
 
 # Service factory - one per repo_path
@@ -200,6 +206,67 @@ def generate_exercise(req: GenerateExerciseRequest):
     except Exception as e:
         import traceback
         traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "detail": str(e)},
+        )
+
+
+@app.post("/clone-repo")
+def clone_repo(req: CloneRepoRequest):
+    """Clone a GitHub repository into target_repo, replacing any existing contents."""
+    target = os.path.abspath("target_repo")
+    temp_clone = os.path.join(target, "_clone_tmp")
+
+    try:
+        # 1. Wipe target_repo contents (but keep the directory itself)
+        if os.path.isdir(target):
+            for entry in os.listdir(target):
+                entry_path = os.path.join(target, entry)
+                if os.path.isdir(entry_path):
+                    shutil.rmtree(entry_path)
+                else:
+                    os.remove(entry_path)
+        else:
+            os.makedirs(target, exist_ok=True)
+
+        # 2. Clone into a temporary subdirectory
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", req.repo_url, temp_clone],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "detail": f"git clone failed: {result.stderr.strip()}"},
+            )
+
+        # 3. Move cloned contents up to target_repo root
+        for entry in os.listdir(temp_clone):
+            shutil.move(os.path.join(temp_clone, entry), os.path.join(target, entry))
+
+        # 4. Remove the now-empty temp directory
+        if os.path.isdir(temp_clone):
+            shutil.rmtree(temp_clone)
+
+        # 5. Delete the .git folder so target_repo is a clean working copy
+        git_dir = os.path.join(target, ".git")
+        if os.path.isdir(git_dir):
+            def force_remove_readonly(func, path, _exc_info):
+                """Clear read-only flag on Windows and retry delete."""
+                import stat
+                os.chmod(path, stat.S_IWRITE)
+                func(path)
+            shutil.rmtree(git_dir, onexc=force_remove_readonly)
+
+        return {"status": "ok", "message": f"Repository cloned into {target}"}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Clean up partial clone on failure
+        if os.path.isdir(temp_clone):
+            shutil.rmtree(temp_clone)
         return JSONResponse(
             status_code=500,
             content={"status": "error", "detail": str(e)},
