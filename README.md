@@ -1,21 +1,27 @@
 # Brook: Codebase Tutor 🎓
 
-Brook is a IntelliJ Platform plugin designed to bring an interactive "Over-the-Shoulder" AI tutor directly into your development environment. This allows for immersive, context-aware onboarding and learning exercises right inside your IDE.
+Brook is an advanced PyCharm plugin designed to help how developers onboard to new projects and learn unfamiliar codebases.
+By integrating an "Over-the-Shoulder" AI tutor directly into your development environment, Brook eliminates the friction of switching context between your IDE and external documentation or chat tools.
+It creates an immersive learning experience by tracking your coding progress in real time, understanding the exact context of the files you are working on, and guiding you through interactive exercises.
+
+## Purpose & Goal
+
+The primary purpose of Brook is to redce the steep learning curve often associated with diving into a complex codebase.Wheter you are a new hire trying to understand the architecture, or a student learning specific design patterns, Brook as a knowledgeable mentor sitting right beside you. Instead of simply generating code for you to copy and paste, Brook's AI is explicitly prompted to act Socratically. It analyzes your active workspace, evluates your uncommitted changes, and provides tailored hints that encourage you to discover the solution yourself.
 
 ## Overview
 
-The Brook Plugin acts as the frontend client to the Brook backend. By living directly in the IDE, it goes beyond generic AI assistants by automatically tracking what you're doing, reading your active code, and offering customized guidance.
+The Brook Plugin acts as the frontend client to he Brook backend. By living directly in the IDE, it automatically tracks what you're doing, reading your active code and offering customized guidance.
 
 Key features of the plugin include:
 - **Integrated Tool Window**: A custom Tool Window that splits into a "Menu" and "Chat" panel.
 - **Embedded Browser**: Uses JCEF (Java Chromium Embedded Framework) to render exercise instructions.
-- **Context-Aware Assistance**: The plugin automatically grabs the content of your currently active editor window (`FileEditorManager`) and sends it to the tutor, so the AI knows exactly what you are looking at.
-- **Socratic Hints**: A dedicated "Get Hint" button triggers an SSE (Server-Sent Events) stream to provide real-time, typed-out hints without just printing the final solution.
+- **Context-Aware Assistance**: The plugin automatically grabs the content of your currently active editor window (`FileEditorManager`) and sends it to the tutor, so the AI knows exactly wht you are looking at.
+- **Socratic Hints**: A dedicated "Get Hint" button provides real-time, typed-out hints without just printing the final solution.
 - **Automated Grading**: "Check Solution" instantly validates your active code against the backend validation criteria.
 
 ## Plugin UI Architecture
 
-The plugin is architected using Kotlin Coroutines and the IntelliJ Platform SDK:
+The plugin is architected using Kotlin Coroutines and the Intellij Platform SDK:
 
 ### 1. Tool Window (`BrookToolWindowFactory`)
 - The main entry point that registers the plugin workspace.
