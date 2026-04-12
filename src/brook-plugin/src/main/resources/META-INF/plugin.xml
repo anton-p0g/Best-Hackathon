@@ -16,7 +16,7 @@
                 id="Brook"
                 anchor="right"
                 factoryClass="org.pythons.brook.ui.BrookToolWindowFactory"
-                icon="/icons/brook.svg"/>
+                icon="icons/logo.svg"/>
 
     </extensions>
 
