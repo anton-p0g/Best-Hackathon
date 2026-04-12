@@ -6,14 +6,14 @@ It creates an immersive learning experience by tracking your coding progress in 
 
 ## Purpose & Goal
 
-The primary purpose of Brook is to redce the steep learning curve often associated with diving into a complex codebase.Wheter you are a new hire trying to understand the architecture, or a student learning specific design patterns, Brook as a knowledgeable mentor sitting right beside you. Instead of simply generating code for you to copy and paste, Brook's AI is explicitly prompted to act Socratically. It analyzes your active workspace, evluates your uncommitted changes, and provides tailored hints that encourage you to discover the solution yourself.
+The primary purpose of Brook is to reduce the steep learning curve often associated with diving into a complex codebase. Whether you are a new hire trying to understand the architecture, or a student learning specific design patterns, Brook is a knowledgeable mentor sitting right beside you. Instead of simply generating code for you to copy and paste, Brook's AI is explicitly designed to act Socratically. It analyzes your active workspace, evaluates your uncommitted changes, and provides tailored hints that encourage you to discover the solution yourself. 
 
 ## Overview
 
 The Brook Plugin acts as the frontend client to he Brook backend. By living directly in the IDE, it automatically tracks what you're doing, reading your active code and offering customized guidance.
 
 Key features of the plugin include:
-- **Integrated Tool Window**: A custom Tool Window that splits into a "Menu" and "Chat" panel.
+- **Integrated Tool Window**: A custom Tool Window that splits into a "Menu" and "Chat" panel. 
 - **Embedded Browser**: Uses JCEF (Java Chromium Embedded Framework) to render exercise instructions.
 - **Context-Aware Assistance**: The plugin automatically grabs the content of your currently active editor window (`FileEditorManager`) and sends it to the tutor, so the AI knows exactly wht you are looking at.
 - **Socratic Hints**: A dedicated "Get Hint" button provides real-time, typed-out hints without just printing the final solution.
