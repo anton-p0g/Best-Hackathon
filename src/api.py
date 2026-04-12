@@ -19,6 +19,7 @@ from fastapi import Request
 import os
 import shutil
 import subprocess
+import time
 
 from exercise_inference.runner import run, generate_tree
 
@@ -225,7 +226,6 @@ def generate_exercise(req: GenerateExerciseRequest):
 
 @app.post("/clone-repo")
 def clone_repo(req: CloneRepoRequest):
-    """Clone a GitHub repository into target_repo, replacing any existing contents."""
     target = os.path.abspath("target_repo")
     temp_clone = os.path.join(target, "_clone_tmp")
 
@@ -233,8 +233,11 @@ def clone_repo(req: CloneRepoRequest):
         import stat
         os.chmod(path, stat.S_IWRITE)
         func(path)
- 
+
     try:
+        if os.path.isdir(temp_clone):
+            shutil.rmtree(temp_clone, onexc=force_remove_readonly)
+
         if os.path.isdir(target):
             for entry in os.listdir(target):
                 entry_path = os.path.join(target, entry)
@@ -249,7 +252,8 @@ def clone_repo(req: CloneRepoRequest):
                         os.remove(entry_path)
         else:
             os.makedirs(target, exist_ok=True)
- 
+            time.sleep(0.2)
+
         result = subprocess.run(
             ["git", "clone", "--depth", "1", req.repo_url, temp_clone],
             capture_output=True, text=True
@@ -257,21 +261,26 @@ def clone_repo(req: CloneRepoRequest):
         if result.returncode != 0:
             return JSONResponse(
                 status_code=400,
-                content={"status": "error", "detail": f"git clone failed: {result.stderr.strip()}"},
+                content={
+                    "status": "error", 
+                    "detail": f"git clone failed: {result.stderr}",  # sin .strip() para ver todo
+                    "stdout": result.stdout,
+                    "returncode": result.returncode
+                },
             )
- 
+
         for entry in os.listdir(temp_clone):
             shutil.move(os.path.join(temp_clone, entry), os.path.join(target, entry))
- 
+
         if os.path.isdir(temp_clone):
             shutil.rmtree(temp_clone, onexc=force_remove_readonly)
- 
+
         git_dir = os.path.join(target, ".git")
         if os.path.isdir(git_dir):
             shutil.rmtree(git_dir, onexc=force_remove_readonly)
- 
+
         return {"status": "ok", "message": f"Repository cloned into {target}"}
- 
+
     except Exception as e:
         import traceback
         traceback.print_exc()
